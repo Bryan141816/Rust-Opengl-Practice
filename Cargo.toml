@@ -1,0 +1,10 @@
+[package]
+name = "opengl"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+glow = "0.18"
+glfw="0.63.0"
+glam = "0.34.3"
+
