@@ -1,54 +1,140 @@
+mod engine;
 extern crate glfw;
+
+use std::{path::Path, time::Instant};
+use std::fs;
 
 use glfw::{Action, Context, Key::{self}};
 use glow::HasContext;
-use glam::{Vec2, Vec3, Vec4, Mat4};
-use glam::camera::rh;
+use glam::{Vec3, Mat4};
 use glam::camera::rh::proj::opengl;
+
+use crate::engine::camera::Camera;
+use crate::engine::mesh::Mesh;
+use crate::engine::texture::Texture;
+
 const WINDOW_TITLE: &str = "My App";
 
-struct Mesh {
-    vao: glow::NativeVertexArray,
-    vbo: glow::NativeBuffer,
-    vertex_count: i32,
-}
+fn create_cube_mesh() -> (Vec<f32>, Vec<u32>) {
+    let mut vertices = Vec::new();
+    let mut indices = Vec::new();
 
-unsafe fn create_mesh(
-    gl: &glow::Context,
-    vertices: &[f32],
-) -> Mesh {
-    unsafe {
-        let vao = gl.create_vertex_array().unwrap();
-        let vbo = gl.create_buffer().unwrap();
+    let faces = [
+        // Front
+        (
+            Vec3::Z,
+            [
+                Vec3::new(-0.5, -0.5,  0.5),
+                Vec3::new( 0.5, -0.5,  0.5),
+                Vec3::new( 0.5,  0.5,  0.5),
+                Vec3::new(-0.5,  0.5,  0.5),
+            ],
+        ),
 
-        gl.bind_vertex_array(Some(vao));
-        gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
+        // Back
+        (
+            -Vec3::Z,
+            [
+                Vec3::new( 0.5, -0.5, -0.5),
+                Vec3::new(-0.5, -0.5, -0.5),
+                Vec3::new(-0.5,  0.5, -0.5),
+                Vec3::new( 0.5,  0.5, -0.5),
+            ],
+        ),
 
-        let vertext_data = std::slice::from_raw_parts(
-            vertices.as_ptr() as *const u8,
-            std::mem::size_of_val(vertices),
-        );
+        // Left
+        (
+            -Vec3::X,
+            [
+                Vec3::new(-0.5, -0.5, -0.5),
+                Vec3::new(-0.5, -0.5,  0.5),
+                Vec3::new(-0.5,  0.5,  0.5),
+                Vec3::new(-0.5,  0.5, -0.5),
+            ],
+        ),
 
-        gl.buffer_data_u8_slice(
-            glow::ARRAY_BUFFER, 
-            vertext_data, 
-            glow::STATIC_DRAW,
-        );
+        // Right
+        (
+            Vec3::X,
+            [
+                Vec3::new( 0.5, -0.5,  0.5),
+                Vec3::new( 0.5, -0.5, -0.5),
+                Vec3::new( 0.5,  0.5, -0.5),
+                Vec3::new( 0.5,  0.5,  0.5),
+            ],
+        ),
 
-        gl.vertex_attrib_pointer_f32(0, 3, glow::FLOAT, false, 3*4, 0);
-        gl.enable_vertex_attrib_array(0);
+        // Top
+        (
+            Vec3::Y,
+            [
+                Vec3::new(-0.5,  0.5,  0.5),
+                Vec3::new( 0.5,  0.5,  0.5),
+                Vec3::new( 0.5,  0.5, -0.5),
+                Vec3::new(-0.5,  0.5, -0.5),
+            ],
+        ),
 
-        gl.bind_vertex_array(None);
-        gl.bind_buffer(glow::ARRAY_BUFFER, None);
+        // Bottom
+        (
+            -Vec3::Y,
+            [
+                Vec3::new(-0.5, -0.5, -0.5),
+                Vec3::new( 0.5, -0.5, -0.5),
+                Vec3::new( 0.5, -0.5,  0.5),
+                Vec3::new(-0.5, -0.5,  0.5),
+            ],
+        ),
+    ];
 
-        Mesh {
-            vao,
-            vbo,
-            vertex_count: (vertices.len() / 3) as i32,
+    // Temporary UV coordinates shared by every face
+    let face_uvs = [
+        [0.0, 0.0], // Bottom-left
+        [1.0, 0.0], // Bottom-right
+        [1.0, 1.0], // Top-right
+        [0.0, 1.0], // Top-left
+    ];
+
+    for (normal, corners) in faces {
+        let base_index = (vertices.len() / 8) as u32;
+
+        // Add 4 vertices per face
+        for (i, position) in corners.into_iter().enumerate() {
+            let uv = face_uvs[i];
+
+            vertices.extend_from_slice(&[
+                // Position
+                position.x,
+                position.y,
+                position.z,
+
+                // Normal
+                normal.x,
+                normal.y,
+                normal.z,
+
+                // UV
+                uv[0],
+                uv[1],
+            ]);
         }
+
+        // Two triangles per face
+        indices.extend_from_slice(&[
+            base_index, base_index + 1, base_index + 2,
+            base_index, base_index + 2, base_index + 3,
+        ]);
     }
+
+    (vertices, indices)
 }
 
+fn load_shader_source(path: &str) -> String {
+    let shader_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join(path);
+
+    fs::read_to_string(shader_path).expect("Failed to load file")
+}
 
 fn main() {
     use glfw::fail_on_errors;
@@ -89,157 +175,232 @@ fn main() {
 
     unsafe {
         gl.enable(glow::DEPTH_TEST);
-        // Triangle: 3 vertices, 3 floats per vertex
-        // Triangle on the left
-        let triangle_vertices: [f32; 9] = [
-            -0.7,  0.5, 0.0,
-            -0.9, -0.5, 0.0,
-            -0.5, -0.5, 0.0,
-        ];
-
-        // Square on the right
-        let square_vertices: [f32; 18] = [
-            0.3,  0.5, 0.0,
-            0.3, -0.5, 0.0,
-            0.8, -0.5, 0.0,
-
-            0.3,  0.5, 0.0,
-            0.8, -0.5, 0.0,
-            0.8,  0.5, 0.0,
-        ];    
-
-        let triangle = create_mesh(&gl, &triangle_vertices);
 
 
-        let square =   create_mesh(&gl, &square_vertices);
+        let (cube_vertices, cube_indeces)= create_cube_mesh();
+        let cube_mesh = Mesh::new(&gl, &cube_vertices, &cube_indeces);
+        let texture = Texture::new(&gl, "assets/textures/crate.jpg");
+        let vertex_shader_source =
+            load_shader_source("shaders/basic.vert");
 
-
+        let fragment_shader_source =
+            load_shader_source("shaders/basic.frag");
         let vertext_shader = gl.create_shader(glow::VERTEX_SHADER).unwrap();
 
-        gl.shader_source(vertext_shader, r#"
-                #version 330 core 
+        gl.shader_source(vertext_shader,&vertex_shader_source);
 
-                layout (location = 0) in vec3 aPosition;
+        gl.compile_shader(vertext_shader);
 
-                uniform mat4 model;
-                uniform mat4 view;
-                uniform mat4 projection;
+        assert!(
+            gl.get_shader_compile_status(vertext_shader),
+            "{}", 
+            &gl.get_shader_info_log(vertext_shader)
+        );
 
-                void main() {
-                    gl_Position = projection * view * model * vec4(aPosition, 1.0);
-                }
-            "#);
+        let fragment_shader = gl.create_shader(glow::FRAGMENT_SHADER).unwrap();
 
-            gl.compile_shader(vertext_shader);
+        gl.shader_source(fragment_shader, &fragment_shader_source);
 
-            assert!(
-                gl.get_shader_compile_status(vertext_shader),
-                "{}", 
-                &gl.get_shader_info_log(vertext_shader)
-            );
+        gl.compile_shader(fragment_shader);
 
-            let fragment_shader = gl.create_shader(glow::FRAGMENT_SHADER).unwrap();
+        assert!(
+            gl.get_shader_compile_status(fragment_shader),
+            "{}",
+            &gl.get_shader_info_log(fragment_shader)
+        );
 
-            gl.shader_source(fragment_shader, r#"
-                #version 330 core
+        let program = gl.create_program().unwrap();
 
-                out vec4 FragColor;
+        gl.attach_shader(program, vertext_shader);
+        gl.attach_shader(program, fragment_shader);
+        gl.link_program(program);
 
-                void main() {
-                    FragColor = vec4(1.0, 0.3, 0.2, 1.0);
-                }
-            "#
-            );
+        assert!(
+            gl.get_program_link_status(program),
+            "{}",
+            gl.get_program_info_log(program)
+        );
 
-            gl.compile_shader(fragment_shader);
+        gl.delete_shader(vertext_shader);
+        gl.delete_shader(fragment_shader);
 
-            assert!(
-                gl.get_shader_compile_status(fragment_shader),
-                "{}",
-                &gl.get_shader_info_log(fragment_shader)
-            );
+        let model_location = gl.get_uniform_location(program, "model");
+        let view_location = gl.get_uniform_location(program, "view");
+        let projection_location = gl.get_uniform_location(program, "projection");
 
-            let program = gl.create_program().unwrap();
+        let object_color_location =
+            gl.get_uniform_location(program, "objectColor");
 
-            gl.attach_shader(program, vertext_shader);
-            gl.attach_shader(program, fragment_shader);
-            gl.link_program(program);
+        let light_color_location =
+            gl.get_uniform_location(program, "lightColor");
 
-            assert!(
-                gl.get_program_link_status(program),
-                "{}",
-                gl.get_program_info_log(program)
-            );
+        let light_dir_location =
+            gl.get_uniform_location(program, "lightDir");
 
-            gl.delete_shader(vertext_shader);
-            gl.delete_shader(fragment_shader);
+        let model = Mat4::IDENTITY;
 
-            let model_location = gl.get_uniform_location(program, "model");
-            let view_location = gl.get_uniform_location(program, "view");
-            let projection_location = gl.get_uniform_location(program, "projection");
+        let projection = opengl::perspective(
+            45.0_f32.to_radians(),
+            800.0 / 600.0,
+            0.1,
+            100.0,
+        );
 
-            let model = Mat4::IDENTITY;
-            let view = rh::view::look_at_mat4(
-                Vec3::new(0.0,0.0,3.0),
-                Vec3::ZERO,
-                Vec3::Y,
-            );
+        let mut camera = Camera::new(
+            Vec3::new(0.0, 0.0, 3.0)
+        );   
+        let mut last_frame = Instant::now();
+        window.set_cursor_pos_polling(true);
+        window.set_cursor_mode(glfw::CursorMode::Disabled);
+        let mut last_mouse_x = 400.0;
+        let mut last_mouse_y = 300.0;
+        let mut first_mouse = true;
+        while !window.should_close() {
 
-            let projection = opengl::perspective(
-                45.0_f32.to_radians(),
-                800.0 / 600.0,
-                0.1,
-                100.0,
-            );
+            
+            let current_frame = Instant::now();
 
-            while !window.should_close() {
-                gl.clear_color(0.1, 0.1, 0.1, 1.0);
-                gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
+            let delta_time = current_frame
+                .duration_since(last_frame)
+                .as_secs_f32();
 
-                gl.use_program(Some(program));
+            last_frame = current_frame;
 
-                gl.uniform_matrix_4_f32_slice(
-                    model_location.as_ref(), 
-                    false, 
-                    &model.to_cols_array()
-                );
+            glfw.poll_events();
 
-                gl.uniform_matrix_4_f32_slice(
-                    view_location.as_ref(), 
-                    false, 
-                    &view.to_cols_array()
-                );
-
-                gl.uniform_matrix_4_f32_slice(
-                    projection_location.as_ref(), 
-                    false, 
-                    &projection.to_cols_array()
-                );
-
-                gl.bind_vertex_array(Some(triangle.vao));
-                gl.draw_arrays(glow::TRIANGLES, 0, triangle.vertex_count);
-
-                gl.bind_vertex_array(Some(square.vao));
-                gl.draw_arrays(glow::TRIANGLES, 0, square.vertex_count);
-
-                window.swap_buffers();
-
-                glfw.poll_events();
-                for (_,event) in glfw::flush_messages(&event) {
-                    println!("{:?}", event);
-                    match event {
-                        glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
-                            window.set_should_close(true);
+            for (_, event) in glfw::flush_messages(&event) {
+                match event {
+                    glfw::WindowEvent::CursorPos(x, y) => {
+                        if first_mouse {
+                            last_mouse_x = x;
+                            last_mouse_y = y;
+                            first_mouse = false;
                         }
-                        _ => (),
+
+                        let x_offset = x - last_mouse_x;
+                        let y_offset = last_mouse_y - y;
+
+                        last_mouse_x = x;
+                        last_mouse_y = y;
+
+                        camera.yaw +=
+                            (x_offset as f32)
+                            * camera.sensitivity.to_radians();
+
+                        camera.pitch +=
+                            (y_offset as f32)
+                            * camera.sensitivity.to_radians();
+
+                        camera.pitch = camera.pitch.clamp(
+                            -89.0_f32.to_radians(),
+                            89.0_f32.to_radians(),
+                        );
                     }
+
+                    glfw::WindowEvent::Key(
+                        Key::Escape,
+                        _,
+                        Action::Press,
+                        _
+                    ) => {
+                        window.set_should_close(true);
+                    }
+
+                    _ => {}
                 }
             }
-            gl.delete_program(program);
-            gl.delete_buffer(triangle.vbo);
-            gl.delete_buffer(square.vbo);
-            gl.delete_vertex_array(triangle.vao);
-            gl.delete_vertex_array(square.vao);
+
+
+            let direction = camera.direction();
+            let right = direction.cross(Vec3::Y).normalize();
+
+            let velocity = camera.speed * delta_time;
+
+            if window.get_key(Key::W) == Action::Press {
+                camera.position += direction * velocity;
+            }
+
+            if window.get_key(Key::S) == Action::Press {
+                camera.position -= direction * velocity;
+            }
+
+            if window.get_key(Key::A) == Action::Press {
+                camera.position -= right * velocity;
+            }
+
+            if window.get_key(Key::D) == Action::Press {
+                camera.position += right * velocity;
+            }
+            if window.get_key(Key::Space) == Action::Press {
+                camera.position.y += velocity;
+            }
+
+            if window.get_key(Key::LeftShift) == Action::Press {
+                camera.position.y -= velocity;
+            }
+
+            // Camera matrix
+            let view = camera.view_matrix();
+
+            gl.clear_color(0.1, 0.1, 0.1, 1.0);
+            gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
+
+            gl.use_program(Some(program));
+
+
+            gl.uniform_matrix_4_f32_slice(
+                model_location.as_ref(),
+                false,
+                &model.to_cols_array(),
+            );
+
+            gl.uniform_matrix_4_f32_slice(
+                view_location.as_ref(), 
+                false, 
+                &view.to_cols_array()
+            );
+
+            gl.uniform_matrix_4_f32_slice(
+                projection_location.as_ref(), 
+                false, 
+                &projection.to_cols_array()
+            );
+
+            // Object color (orange/red)
+            gl.uniform_3_f32(
+                object_color_location.as_ref(),
+                1.0, 0.3, 0.2,
+            );
+
+            // Light color (white)
+            gl.uniform_3_f32(
+                light_color_location.as_ref(),
+                1.0, 1.0, 1.0,
+            );
+
+            // Direction toward the light source
+            gl.uniform_3_f32(
+                light_dir_location.as_ref(),
+                -0.5, 1.0, 0.3,
+            );
+            texture.bind(&gl, 0);
+            let texture_location = gl.get_uniform_location(
+                program, 
+                "texture1"
+            );
+            gl.uniform_1_i32(
+                texture_location.as_ref(), 
+                0
+            );
+
+            cube_mesh.draw(&gl);
+
+            window.swap_buffers();
+
+        }
+        gl.delete_program(program);
+        gl.delete_buffer(cube_mesh.vbo);
+        gl.delete_vertex_array(cube_mesh.vao);
 
     }
 
