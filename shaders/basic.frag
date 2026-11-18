@@ -1,6 +1,7 @@
 #version 330 core
 
 in vec3 Normal;
+in vec2 TexCoords;
 
 out vec4 FragColor;
 
@@ -8,7 +9,11 @@ uniform vec3 objectColor;
 uniform vec3 lightColor;
 uniform vec3 lightDir;
 
+uniform sampler2D texture1;
+
 void main() {
+    vec4 texColor = texture(texture1, TexCoords);
+
     // Ambient lighting
     float ambientStrength = 0.15;
     vec3 ambient = ambientStrength * lightColor;
@@ -21,7 +26,7 @@ void main() {
     vec3 diffuse = diff * lightColor;
 
     // Combine lighting
-    vec3 result = (ambient + diffuse) * objectColor;
+    vec3 result = (ambient + diffuse) * texColor.rgb;
 
-    FragColor = vec4(result, 1.0);
+    FragColor = vec4(result, texColor.a);
 }  

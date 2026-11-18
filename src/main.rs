@@ -11,21 +11,23 @@ use glam::camera::rh::proj::opengl;
 
 use crate::engine::camera::Camera;
 use crate::engine::mesh::Mesh;
+use crate::engine::texture::Texture;
 
 const WINDOW_TITLE: &str = "My App";
 
-fn create_cube_vertices() -> Vec<f32> {
+fn create_cube_mesh() -> (Vec<f32>, Vec<u32>) {
     let mut vertices = Vec::new();
+    let mut indices = Vec::new();
 
     let faces = [
         // Front
         (
             Vec3::Z,
             [
-            Vec3::new(-0.5, -0.5,  0.5),
-            Vec3::new( 0.5, -0.5,  0.5),
-            Vec3::new( 0.5,  0.5,  0.5),
-            Vec3::new(-0.5,  0.5,  0.5),
+                Vec3::new(-0.5, -0.5,  0.5),
+                Vec3::new( 0.5, -0.5,  0.5),
+                Vec3::new( 0.5,  0.5,  0.5),
+                Vec3::new(-0.5,  0.5,  0.5),
             ],
         ),
 
@@ -33,10 +35,10 @@ fn create_cube_vertices() -> Vec<f32> {
         (
             -Vec3::Z,
             [
-            Vec3::new( 0.5, -0.5, -0.5),
-            Vec3::new(-0.5, -0.5, -0.5),
-            Vec3::new(-0.5,  0.5, -0.5),
-            Vec3::new( 0.5,  0.5, -0.5),
+                Vec3::new( 0.5, -0.5, -0.5),
+                Vec3::new(-0.5, -0.5, -0.5),
+                Vec3::new(-0.5,  0.5, -0.5),
+                Vec3::new( 0.5,  0.5, -0.5),
             ],
         ),
 
@@ -44,10 +46,10 @@ fn create_cube_vertices() -> Vec<f32> {
         (
             -Vec3::X,
             [
-            Vec3::new(-0.5, -0.5, -0.5),
-            Vec3::new(-0.5, -0.5,  0.5),
-            Vec3::new(-0.5,  0.5,  0.5),
-            Vec3::new(-0.5,  0.5, -0.5),
+                Vec3::new(-0.5, -0.5, -0.5),
+                Vec3::new(-0.5, -0.5,  0.5),
+                Vec3::new(-0.5,  0.5,  0.5),
+                Vec3::new(-0.5,  0.5, -0.5),
             ],
         ),
 
@@ -55,10 +57,10 @@ fn create_cube_vertices() -> Vec<f32> {
         (
             Vec3::X,
             [
-            Vec3::new( 0.5, -0.5,  0.5),
-            Vec3::new( 0.5, -0.5, -0.5),
-            Vec3::new( 0.5,  0.5, -0.5),
-            Vec3::new( 0.5,  0.5,  0.5),
+                Vec3::new( 0.5, -0.5,  0.5),
+                Vec3::new( 0.5, -0.5, -0.5),
+                Vec3::new( 0.5,  0.5, -0.5),
+                Vec3::new( 0.5,  0.5,  0.5),
             ],
         ),
 
@@ -66,10 +68,10 @@ fn create_cube_vertices() -> Vec<f32> {
         (
             Vec3::Y,
             [
-            Vec3::new(-0.5,  0.5,  0.5),
-            Vec3::new( 0.5,  0.5,  0.5),
-            Vec3::new( 0.5,  0.5, -0.5),
-            Vec3::new(-0.5,  0.5, -0.5),
+                Vec3::new(-0.5,  0.5,  0.5),
+                Vec3::new( 0.5,  0.5,  0.5),
+                Vec3::new( 0.5,  0.5, -0.5),
+                Vec3::new(-0.5,  0.5, -0.5),
             ],
         ),
 
@@ -77,33 +79,54 @@ fn create_cube_vertices() -> Vec<f32> {
         (
             -Vec3::Y,
             [
-            Vec3::new(-0.5, -0.5, -0.5),
-            Vec3::new( 0.5, -0.5, -0.5),
-            Vec3::new( 0.5, -0.5,  0.5),
-            Vec3::new(-0.5, -0.5,  0.5),
+                Vec3::new(-0.5, -0.5, -0.5),
+                Vec3::new( 0.5, -0.5, -0.5),
+                Vec3::new( 0.5, -0.5,  0.5),
+                Vec3::new(-0.5, -0.5,  0.5),
             ],
         ),
-        ];
+    ];
 
-        for (normal, corners) in faces {
-            let indices = [0, 1, 2, 0, 2, 3];
+    // Temporary UV coordinates shared by every face
+    let face_uvs = [
+        [0.0, 0.0], // Bottom-left
+        [1.0, 0.0], // Bottom-right
+        [1.0, 1.0], // Top-right
+        [0.0, 1.0], // Top-left
+    ];
 
-            for index in indices {
-                let position = corners[index];
+    for (normal, corners) in faces {
+        let base_index = (vertices.len() / 8) as u32;
 
-                vertices.extend_from_slice(&[
-                    position.x,
-                    position.y,
-                    position.z,
+        // Add 4 vertices per face
+        for (i, position) in corners.into_iter().enumerate() {
+            let uv = face_uvs[i];
 
-                    normal.x,
-                    normal.y,
-                    normal.z,
-                ]);
-            }
+            vertices.extend_from_slice(&[
+                // Position
+                position.x,
+                position.y,
+                position.z,
+
+                // Normal
+                normal.x,
+                normal.y,
+                normal.z,
+
+                // UV
+                uv[0],
+                uv[1],
+            ]);
         }
 
-        vertices
+        // Two triangles per face
+        indices.extend_from_slice(&[
+            base_index, base_index + 1, base_index + 2,
+            base_index, base_index + 2, base_index + 3,
+        ]);
+    }
+
+    (vertices, indices)
 }
 
 fn load_shader_source(path: &str) -> String {
@@ -154,9 +177,9 @@ fn main() {
         gl.enable(glow::DEPTH_TEST);
 
 
-        let cube_vertices = create_cube_vertices();
-        let square = Mesh::new(&gl, &cube_vertices);
-
+        let (cube_vertices, cube_indeces)= create_cube_mesh();
+        let cube_mesh = Mesh::new(&gl, &cube_vertices, &cube_indeces);
+        let texture = Texture::new(&gl, "assets/textures/crate.jpg");
         let vertex_shader_source =
             load_shader_source("shaders/basic.vert");
 
@@ -360,15 +383,24 @@ fn main() {
                 light_dir_location.as_ref(),
                 -0.5, 1.0, 0.3,
             );
-            gl.bind_vertex_array(Some(square.vao));
-            gl.draw_arrays(glow::TRIANGLES, 0, square.vertex_count);
+            texture.bind(&gl, 0);
+            let texture_location = gl.get_uniform_location(
+                program, 
+                "texture1"
+            );
+            gl.uniform_1_i32(
+                texture_location.as_ref(), 
+                0
+            );
+
+            cube_mesh.draw(&gl);
 
             window.swap_buffers();
 
         }
         gl.delete_program(program);
-        gl.delete_buffer(square.vbo);
-        gl.delete_vertex_array(square.vao);
+        gl.delete_buffer(cube_mesh.vbo);
+        gl.delete_vertex_array(cube_mesh.vao);
 
     }
 
