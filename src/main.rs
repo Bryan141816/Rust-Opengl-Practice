@@ -1,8 +1,7 @@
 mod engine;
 extern crate glfw;
 
-use std::{path::Path, time::Instant};
-use std::fs;
+use std::time::Instant;
 
 use glfw::{Action, Context, Key::{self}};
 use glow::HasContext;
@@ -13,16 +12,11 @@ use crate::engine::camera::Camera;
 use crate::engine::mesh::Mesh;
 use crate::engine::texture::Texture;
 use crate::engine::shape::Shape;
+use crate::engine::lighting::DirectionalLight;
+use crate::engine::lighting::Material;
+use crate::engine::shader::Shader;
 
 const WINDOW_TITLE: &str = "My App";
-
-
-fn load_shader_source(path: &str) -> String {
-    let shader_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join(path);
-
-    fs::read_to_string(shader_path).expect("Failed to load file")
-}
 
 fn main() {
     use glfw::fail_on_errors;
@@ -65,65 +59,15 @@ fn main() {
         gl.enable(glow::DEPTH_TEST);
 
 
-        let (cube_vertices, cube_indeces)= Shape::Sphere { radius: 1.0, sectors: 36, stacks: 18 }.generate();
+        let (cube_vertices, cube_indeces)= Shape::Cube { size: 1.0 } .generate();
         let cube_mesh = Mesh::new(&gl, &cube_vertices, &cube_indeces);
         let texture = Texture::new(&gl, "assets/textures/crate.jpg");
-        let vertex_shader_source =
-            load_shader_source("shaders/basic.vert");
+        let shader = Shader::new(
+            &gl,
+            "shaders/basic.vert",
+            "shaders/basic.frag",
+        ).expect("Failed to create shader");
 
-        let fragment_shader_source =
-            load_shader_source("shaders/basic.frag");
-        let vertext_shader = gl.create_shader(glow::VERTEX_SHADER).unwrap();
-
-        gl.shader_source(vertext_shader,&vertex_shader_source);
-
-        gl.compile_shader(vertext_shader);
-
-        assert!(
-            gl.get_shader_compile_status(vertext_shader),
-            "{}", 
-            &gl.get_shader_info_log(vertext_shader)
-        );
-
-        let fragment_shader = gl.create_shader(glow::FRAGMENT_SHADER).unwrap();
-
-        gl.shader_source(fragment_shader, &fragment_shader_source);
-
-        gl.compile_shader(fragment_shader);
-
-        assert!(
-            gl.get_shader_compile_status(fragment_shader),
-            "{}",
-            &gl.get_shader_info_log(fragment_shader)
-        );
-
-        let program = gl.create_program().unwrap();
-
-        gl.attach_shader(program, vertext_shader);
-        gl.attach_shader(program, fragment_shader);
-        gl.link_program(program);
-
-        assert!(
-            gl.get_program_link_status(program),
-            "{}",
-            gl.get_program_info_log(program)
-        );
-
-        gl.delete_shader(vertext_shader);
-        gl.delete_shader(fragment_shader);
-
-        let model_location = gl.get_uniform_location(program, "model");
-        let view_location = gl.get_uniform_location(program, "view");
-        let projection_location = gl.get_uniform_location(program, "projection");
-
-        let object_color_location =
-            gl.get_uniform_location(program, "objectColor");
-
-        let light_color_location =
-            gl.get_uniform_location(program, "lightColor");
-
-        let light_dir_location =
-            gl.get_uniform_location(program, "lightDir");
 
         let model = Mat4::IDENTITY;
 
@@ -137,6 +81,19 @@ fn main() {
         let mut camera = Camera::new(
             Vec3::new(0.0, 0.0, 3.0)
         );   
+
+        let light = DirectionalLight {
+            direction: Vec3::new(-0.5, -1.0, -0.3).normalize(),
+            color: Vec3::ONE,
+            intensity: 1.0,
+        };
+
+        let material = Material {
+            ambient: Vec3::splat(0.1),
+            diffuse: Vec3::new(0.8, 0.2, 0.2),
+            specular: Vec3::ONE,
+            shininess: 32.0,
+        };
         let mut last_frame = Instant::now();
         window.set_cursor_pos_polling(true);
         window.set_cursor_mode(glfw::CursorMode::Disabled);
@@ -145,7 +102,7 @@ fn main() {
         let mut first_mouse = true;
         while !window.should_close() {
 
-            
+
             let current_frame = Instant::now();
 
             let delta_time = current_frame
@@ -226,70 +183,43 @@ fn main() {
             if window.get_key(Key::LeftShift) == Action::Press {
                 camera.position.y -= velocity;
             }
-
+            gl.clear_color(0.1, 0.1, 0.1, 1.0);
+            gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
+            shader.bind(&gl);
             // Camera matrix
             let view = camera.view_matrix();
 
-            gl.clear_color(0.1, 0.1, 0.1, 1.0);
-            gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
+            shader.set_mat4(&gl, "model", &model);
+            shader.set_mat4(&gl, "view", &view);
+            shader.set_mat4(&gl, "projection", &projection);
+            shader.set_vec3(&gl, "viewPos", camera.position);
 
-            gl.use_program(Some(program));
+            // Directional light
+            shader.set_vec3(&gl, "lightDir", light.direction);
+            shader.set_vec3(&gl, "lightColor", light.color);
+            shader.set_float(&gl, "lightIntensity", light.intensity);
 
+            // Material
+            shader.set_vec3(&gl, "materialAmbient", material.ambient);
+            shader.set_vec3(&gl, "materialSpecular", material.specular);
+            shader.set_float(&gl, "materialShininess", material.shininess);
 
-            gl.uniform_matrix_4_f32_slice(
-                model_location.as_ref(),
-                false,
-                &model.to_cols_array(),
-            );
-
-            gl.uniform_matrix_4_f32_slice(
-                view_location.as_ref(), 
-                false, 
-                &view.to_cols_array()
-            );
-
-            gl.uniform_matrix_4_f32_slice(
-                projection_location.as_ref(), 
-                false, 
-                &projection.to_cols_array()
-            );
-
-            // Object color (orange/red)
-            gl.uniform_3_f32(
-                object_color_location.as_ref(),
-                1.0, 0.3, 0.2,
-            );
-
-            // Light color (white)
-            gl.uniform_3_f32(
-                light_color_location.as_ref(),
-                1.0, 1.0, 1.0,
-            );
-
-            // Direction toward the light source
-            gl.uniform_3_f32(
-                light_dir_location.as_ref(),
-                -0.5, 1.0, 0.3,
-            );
+            // Texture
+            shader.set_int(&gl, "hasTexture", 1);
             texture.bind(&gl, 0);
-            let texture_location = gl.get_uniform_location(
-                program, 
-                "texture1"
-            );
-            gl.uniform_1_i32(
-                texture_location.as_ref(), 
-                0
-            );
+
+            shader.set_int(&gl, "texture1", 0);
 
             cube_mesh.draw(&gl);
 
             window.swap_buffers();
 
         }
-        gl.delete_program(program);
+        shader.delete(&gl);
         gl.delete_buffer(cube_mesh.vbo);
         gl.delete_vertex_array(cube_mesh.vao);
 
     }
 
 }
+
