@@ -1,5 +1,7 @@
-mod directional_light;
+mod light;
 mod material;
+mod light_manager;
 
-pub use directional_light::*;
+pub use light::*;
 pub use material::*;
+pub use light_manager::*;
