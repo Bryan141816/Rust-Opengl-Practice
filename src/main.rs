@@ -3,22 +3,24 @@ extern crate glfw;
 
 use std::time::Instant;
 
-use glow::HasContext;
+use glow::{HasContext, Shader};
 use glam::{Vec3, Mat4};
 use glam::camera::rh::proj::opengl;
 
 use crate::engine::window::{GlfwWindow, Window};
 
 use crate::engine::camera::Camera;
-use crate::engine::mesh::Mesh;
 use crate::engine::texture::Texture;
 use crate::engine::shape::Shape;
 use crate::engine::lighting::{Light, DirectionalLight, PointLight};
 use crate::engine::lighting::Material;
 use crate::engine::lighting::LightManager;
-use crate::engine::shader::Shader;
+use crate::engine::shader::ShaderSource;
 use crate::engine::window::Key;
-use crate::engine::backend::opengl::mesh::OpenGLMesh;
+use crate::engine::backend::opengl::OpenGLMesh;
+use crate::engine::backend::opengl::OpenGLShader;
+use crate::engine::backend::opengl::OpenGLTexture;
+
 const WINDOW_TITLE: &str = "My App";
 
 fn main() {
@@ -36,20 +38,20 @@ fn main() {
 
     println!("OpenGL initialized");
 
-
     unsafe {
         gl.enable(glow::DEPTH_TEST);
-
 
         let sphere_mesh= Shape::Sphere { radius: 1.0, sectors: 36, stacks: 18 }.generate();
         let mesh = OpenGLMesh::new(&gl, &sphere_mesh).unwrap();
         // let cube_mesh = Mesh::new(sphere_mesh.vertices, sphere_mesh.indices); 
-        let texture = Texture::new(&gl, "assets/textures/crate.jpg");
-        let shader = Shader::new(
-            &gl,
+        let texture_data = Texture::load("assets/textures/crate.jpg").unwrap();
+        let texture = OpenGLTexture::new(&gl, &texture_data);
+
+        let shader_source = ShaderSource::load(
             "shaders/basic.vert",
             "shaders/basic.frag",
         ).expect("Failed to create shader");
+        let shader = OpenGLShader::new(&gl, &shader_source).unwrap();
 
 
         let model = Mat4::IDENTITY;
@@ -317,8 +319,8 @@ fn main() {
             shader.set_float(&gl, "materialShininess", material.shininess);
 
             // Texture
-            shader.set_int(&gl, "hasTexture", 0);
-            //texture.bind(&gl, 0);
+            shader.set_int(&gl, "hasTexture", 1);
+            texture.bind(&gl, 0);
 
             shader.set_int(&gl, "texture1", 0);
 
@@ -327,8 +329,9 @@ fn main() {
             window.swap_buffers();
 
         }
-        shader.delete(&gl);
+        shader.destroy(&gl);
         mesh.destroy(&gl);
+        texture.destroy(&gl);
 
     }
 
