@@ -18,6 +18,7 @@ use crate::engine::lighting::Material;
 use crate::engine::lighting::LightManager;
 use crate::engine::shader::Shader;
 use crate::engine::window::Key;
+use crate::engine::backend::opengl::mesh::OpenGLMesh;
 const WINDOW_TITLE: &str = "My App";
 
 fn main() {
@@ -40,8 +41,9 @@ fn main() {
         gl.enable(glow::DEPTH_TEST);
 
 
-        let (cube_vertices, cube_indeces)= Shape::Sphere { radius: 1.0, sectors: 36, stacks: 18 }.generate();
-        let cube_mesh = Mesh::new(&gl, &cube_vertices, &cube_indeces);
+        let sphere_mesh= Shape::Sphere { radius: 1.0, sectors: 36, stacks: 18 }.generate();
+        let mesh = OpenGLMesh::new(&gl, &sphere_mesh).unwrap();
+        // let cube_mesh = Mesh::new(sphere_mesh.vertices, sphere_mesh.indices); 
         let texture = Texture::new(&gl, "assets/textures/crate.jpg");
         let shader = Shader::new(
             &gl,
@@ -320,14 +322,13 @@ fn main() {
 
             shader.set_int(&gl, "texture1", 0);
 
-            cube_mesh.draw(&gl);
+            mesh.draw(&gl);
 
             window.swap_buffers();
 
         }
         shader.delete(&gl);
-        gl.delete_buffer(cube_mesh.vbo);
-        gl.delete_vertex_array(cube_mesh.vao);
+        mesh.destroy(&gl);
 
     }
 
