@@ -1,5 +1,14 @@
 use std::{fs, path::Path};
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ShaderId(pub String);
+
+impl ShaderId {
+    pub fn new(name: impl Into<String>) -> Self {
+        Self(name.into())
+    }
+}
+
 pub struct ShaderSource {
     pub vertex: String,
     pub fragment: String,

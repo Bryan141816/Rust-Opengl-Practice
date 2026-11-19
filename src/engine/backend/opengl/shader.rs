@@ -146,7 +146,7 @@ impl OpenGLShader {
         }
     }
 
-    pub unsafe fn destroy(self, gl: &glow::Context) {
+    pub unsafe fn destroy(&self, gl: &glow::Context) {
         unsafe{
             gl.delete_program(self.program);
         }

@@ -3,28 +3,29 @@ extern crate glfw;
 
 use std::time::Instant;
 
-use glow::{HasContext, Shader};
+
 use glam::{Vec3, Mat4};
-use glam::camera::rh::proj::opengl;
 
 use crate::engine::window::{GlfwWindow, Window};
 
 use crate::engine::camera::Camera;
 use crate::engine::texture::Texture;
 use crate::engine::shape::Shape;
-use crate::engine::lighting::{Light, DirectionalLight, PointLight};
+use crate::engine::lighting::{DirectionalLight, Light, PointLight};
 use crate::engine::lighting::Material;
-use crate::engine::lighting::LightManager;
-use crate::engine::shader::ShaderSource;
+
+use crate::engine::shader::{ShaderId, ShaderSource};
 use crate::engine::window::Key;
-use crate::engine::backend::opengl::OpenGLMesh;
-use crate::engine::backend::opengl::OpenGLShader;
-use crate::engine::backend::opengl::OpenGLTexture;
+use crate::engine::scene::Scene;
+use crate::engine::object::RenderObject;
+use crate::engine::backend::opengl::OpenGLRenderer;
 
 const WINDOW_TITLE: &str = "My App";
+const WINDOW_WIDTH: u32 = 800;
+const WINDOW_HEIGHT: u32 = 600;
 
 fn main() {
-    let mut window = GlfwWindow::new(800, 600, WINDOW_TITLE);
+    let mut window = GlfwWindow::new(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE);
 
     let gl = unsafe {
         glow::Context::from_loader_function_cstr(|s| {
@@ -39,42 +40,37 @@ fn main() {
     println!("OpenGL initialized");
 
     unsafe {
-        gl.enable(glow::DEPTH_TEST);
-
+        let mut renderer = OpenGLRenderer::new(gl);
+    
         let sphere_mesh= Shape::Sphere { radius: 1.0, sectors: 36, stacks: 18 }.generate();
-        let mesh = OpenGLMesh::new(&gl, &sphere_mesh).unwrap();
-        // let cube_mesh = Mesh::new(sphere_mesh.vertices, sphere_mesh.indices); 
+        
+        let sphere_handle = renderer.upload_mesh(&sphere_mesh);
+
         let texture_data = Texture::load("assets/textures/crate.jpg").unwrap();
-        let texture = OpenGLTexture::new(&gl, &texture_data);
+        
+        let texture_handle = renderer.upload_texture(&texture_data);
 
         let shader_source = ShaderSource::load(
             "shaders/basic.vert",
             "shaders/basic.frag",
         ).expect("Failed to create shader");
-        let shader = OpenGLShader::new(&gl, &shader_source).unwrap();
+        
+        renderer.load_shader(ShaderId::new("basic"), &shader_source);
 
 
-        let model = Mat4::IDENTITY;
-
-        let projection = opengl::perspective(
-            45.0_f32.to_radians(),
-            800.0 / 600.0,
-            0.1,
-            100.0,
+        let mut scene = Scene::new(
+            Camera::new(
+                Vec3::new(0.0, 0.0, 3.0),
+                WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32,
+            ),
         );
-
-        let mut camera = Camera::new(
-            Vec3::new(0.0, 0.0, 3.0)
-        );  
-
-        let mut light_manager = LightManager::new();
-
-        light_manager.add(Light::Directional(DirectionalLight {
+        
+        scene.lights.add(Light::Directional(DirectionalLight {
             direction: Vec3::new(-0.2, -1.0, -0.3),
             color: Vec3::ONE,
             intensity: 1.0,
         }));
-        light_manager.add(Light::Point(PointLight {
+        scene.lights.add(Light::Point(PointLight {
             position: Vec3::new(2.0, 2.0, 2.0),
             color: Vec3::new(1.0, 0.0, 0.0),
             intensity: 2.0,
@@ -84,7 +80,7 @@ fn main() {
             quadratic: 0.032,
         }));
 
-        light_manager.add(Light::Point(PointLight {
+        scene.lights.add(Light::Point(PointLight {
             position: Vec3::new(-2.0, 1.0, 0.0),
             color: Vec3::new(0.0, 0.0, 1.0),
             intensity: 2.0,
@@ -94,12 +90,25 @@ fn main() {
             quadratic: 0.032,
         }));
 
-        let material = Material {
-            ambient: Vec3::splat(1.0),
-            diffuse: Vec3::ONE,
-            specular: Vec3::ONE,
-            shininess: 32.0,
+        let mut material = Material::new(ShaderId::new("basic"));
+        material.set_diffuse_texture(texture_handle);
+
+        let object = RenderObject {
+            mesh: sphere_handle,
+            material: material.clone(),
+            transform: Mat4::IDENTITY,
         };
+
+        scene.add_object(object);
+
+        let object2 = RenderObject {
+            mesh: sphere_handle,
+            material: material.clone(),
+            transform: Mat4::from_translation(Vec3::new(2.0, 0.0, 0.0)),
+        };
+
+        scene.add_object(object2);
+
         let mut last_frame = Instant::now();
 
         let mut last_mouse_x = 400.0;
@@ -133,15 +142,15 @@ fn main() {
                         last_mouse_x = x;
                         last_mouse_y = y;
 
-                        camera.yaw +=
+                        scene.camera.yaw +=
                             (x_offset as f32)
-                            * camera.sensitivity.to_radians();
+                            * scene.camera.sensitivity.to_radians();
 
-                        camera.pitch +=
+                        scene.camera.pitch +=
                             (y_offset as f32)
-                            * camera.sensitivity.to_radians();
+                            * scene.camera.sensitivity.to_radians();
 
-                        camera.pitch = camera.pitch.clamp(
+                        scene.camera.pitch = scene.camera.pitch.clamp(
                             -89.0_f32.to_radians(),
                             89.0_f32.to_radians(),
                         );
@@ -151,187 +160,44 @@ fn main() {
             }
 
 
-            let direction = camera.direction();
+            let direction = scene.camera.direction();
             let right = direction.cross(Vec3::Y).normalize();
 
-            let velocity = camera.speed * delta_time;
+            let velocity = scene.camera.speed * delta_time;
     
             if window.is_key_pressed(Key::Escape) {
                 window.set_should_close(true);
             }
 
             if window.is_key_pressed(Key::W){
-                camera.position += direction * velocity;
+                scene.camera.position += direction * velocity;
             }
 
             if window.is_key_pressed(Key::S){
-                camera.position -= direction * velocity;
+                scene.camera.position -= direction * velocity;
             }
 
             if window.is_key_pressed(Key::A){
-                camera.position -= right * velocity;
+                scene.camera.position -= right * velocity;
             }
 
             if window.is_key_pressed(Key::D){
-                camera.position += right * velocity;
+                scene.camera.position += right * velocity;
             }
             if window.is_key_pressed(Key::Space){
-                camera.position.y += velocity;
+                scene.camera.position.y += velocity;
             }
 
             if window.is_key_pressed(Key::LeftShift) {
-                camera.position.y -= velocity;
+                scene.camera.position.y -= velocity;
             }
-
-            gl.clear_color(0.1, 0.1, 0.1, 1.0);
-            gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
-            shader.bind(&gl);
-
-            let view = camera.view_matrix();
-
-            shader.set_mat4(&gl, "model", &model);
-            shader.set_mat4(&gl, "view", &view);
-            shader.set_mat4(&gl, "projection", &projection);
-            shader.set_vec3(&gl, "viewPos", camera.position);
-
-            let mut directional_count = 0;
-            let mut point_count = 0;
-            let mut spot_count = 0;
-
-            for light in &light_manager.lights {
-                match light {
-                    Light::Directional(light) => {
-                        let prefix = format!("directionalLights[{}]", directional_count);
-
-                        shader.set_vec3(
-                            &gl,
-                            &format!("{}.direction", prefix),
-                            light.direction,
-                        );
-
-                        shader.set_vec3(
-                            &gl,
-                            &format!("{}.color", prefix),
-                            light.color,
-                        );
-
-                        shader.set_float(
-                            &gl,
-                            &format!("{}.intensity", prefix),
-                            light.intensity,
-                        );
-
-                        directional_count += 1;
-                    }
-
-                    Light::Point(light) => {
-                        let prefix = format!("pointLights[{}]", point_count);
-
-                        shader.set_vec3(
-                            &gl,
-                            &format!("{}.position", prefix),
-                            light.position,
-                        );
-
-                        shader.set_vec3(
-                            &gl,
-                            &format!("{}.color", prefix),
-                            light.color,
-                        );
-
-                        shader.set_float(
-                            &gl,
-                            &format!("{}.intensity", prefix),
-                            light.intensity,
-                        );
-
-                        shader.set_float(
-                            &gl,
-                            &format!("{}.constant", prefix),
-                            light.constant,
-                        );
-
-                        shader.set_float(
-                            &gl,
-                            &format!("{}.linear", prefix),
-                            light.linear,
-                        );
-
-                        shader.set_float(
-                            &gl, 
-                            &format!("{}.quadratic", prefix),
-                            light.quadratic,
-                        );
-
-                        point_count += 1;
-                    }
-
-                    Light::Spot(light) => {
-                        let prefix = format!("spotLights[{}]", spot_count);
-
-                        shader.set_vec3(
-                            &gl,
-                            &format!("{}.position", prefix),
-                            light.position,
-                        );
-
-                        shader.set_vec3(
-                            &gl,
-                            &format!("{}.direction", prefix),
-                            light.direction,
-                        );
-
-                        shader.set_vec3(
-                            &gl,
-                            &format!("{}.color", prefix),
-                            light.color,
-                        );
-
-                        shader.set_float(
-                            &gl,
-                            &format!("{}.intensity", prefix),
-                            light.intensity,
-                        );
-
-                        shader.set_float(
-                            &gl, 
-                            &format!("{}.cutOff", prefix),
-                            light.cut_off,
-                        );
-
-                        shader.set_float(
-                            &gl,    
-                            &format!("{}.outerCutOff", prefix),
-                            light.outer_cut_off,
-                        );
-
-                        spot_count += 1;
-                    }
-                }
-            }
-            shader.set_int(&gl, "directionalLightCount", directional_count as i32);
-            shader.set_int(&gl, "pointLightCount", point_count as i32);
-            shader.set_int(&gl, "spotLightCount", spot_count as i32);
-            // Material
-            shader.set_vec3(&gl, "materialAmbient", material.ambient);
-            shader.set_vec3(&gl, "materialDiffuse", material.diffuse);
-            shader.set_vec3(&gl, "materialSpecular", material.specular);
-            shader.set_float(&gl, "materialShininess", material.shininess);
-
-            // Texture
-            shader.set_int(&gl, "hasTexture", 1);
-            texture.bind(&gl, 0);
-
-            shader.set_int(&gl, "texture1", 0);
-
-            mesh.draw(&gl);
+            renderer.begin_frame();
+            renderer.render(&scene);
 
             window.swap_buffers();
 
         }
-        shader.destroy(&gl);
-        mesh.destroy(&gl);
-        texture.destroy(&gl);
+        renderer.destroy();
 
     }
 

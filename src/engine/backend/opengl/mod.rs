@@ -1,7 +1,10 @@
 mod mesh;
 mod shader;
 mod texture;
-
+mod renderer;
+mod light_uniforms;
 pub use mesh::*;
 pub use shader::*;
 pub use texture::*;
+pub use renderer::*;
+pub use light_uniforms::*;
