@@ -1,8 +1,7 @@
 mod engine;
 extern crate glfw;
 
-use std::{path::Path, time::Instant};
-use std::fs;
+use std::time::Instant;
 
 use glfw::{Action, Context, Key::{self}};
 use glow::HasContext;
@@ -12,129 +11,13 @@ use glam::camera::rh::proj::opengl;
 use crate::engine::camera::Camera;
 use crate::engine::mesh::Mesh;
 use crate::engine::texture::Texture;
+use crate::engine::shape::Shape;
+use crate::engine::lighting::{Light, DirectionalLight, PointLight};
+use crate::engine::lighting::Material;
+use crate::engine::lighting::LightManager;
+use crate::engine::shader::Shader;
 
 const WINDOW_TITLE: &str = "My App";
-
-fn create_cube_mesh() -> (Vec<f32>, Vec<u32>) {
-    let mut vertices = Vec::new();
-    let mut indices = Vec::new();
-
-    let faces = [
-        // Front
-        (
-            Vec3::Z,
-            [
-                Vec3::new(-0.5, -0.5,  0.5),
-                Vec3::new( 0.5, -0.5,  0.5),
-                Vec3::new( 0.5,  0.5,  0.5),
-                Vec3::new(-0.5,  0.5,  0.5),
-            ],
-        ),
-
-        // Back
-        (
-            -Vec3::Z,
-            [
-                Vec3::new( 0.5, -0.5, -0.5),
-                Vec3::new(-0.5, -0.5, -0.5),
-                Vec3::new(-0.5,  0.5, -0.5),
-                Vec3::new( 0.5,  0.5, -0.5),
-            ],
-        ),
-
-        // Left
-        (
-            -Vec3::X,
-            [
-                Vec3::new(-0.5, -0.5, -0.5),
-                Vec3::new(-0.5, -0.5,  0.5),
-                Vec3::new(-0.5,  0.5,  0.5),
-                Vec3::new(-0.5,  0.5, -0.5),
-            ],
-        ),
-
-        // Right
-        (
-            Vec3::X,
-            [
-                Vec3::new( 0.5, -0.5,  0.5),
-                Vec3::new( 0.5, -0.5, -0.5),
-                Vec3::new( 0.5,  0.5, -0.5),
-                Vec3::new( 0.5,  0.5,  0.5),
-            ],
-        ),
-
-        // Top
-        (
-            Vec3::Y,
-            [
-                Vec3::new(-0.5,  0.5,  0.5),
-                Vec3::new( 0.5,  0.5,  0.5),
-                Vec3::new( 0.5,  0.5, -0.5),
-                Vec3::new(-0.5,  0.5, -0.5),
-            ],
-        ),
-
-        // Bottom
-        (
-            -Vec3::Y,
-            [
-                Vec3::new(-0.5, -0.5, -0.5),
-                Vec3::new( 0.5, -0.5, -0.5),
-                Vec3::new( 0.5, -0.5,  0.5),
-                Vec3::new(-0.5, -0.5,  0.5),
-            ],
-        ),
-    ];
-
-    // Temporary UV coordinates shared by every face
-    let face_uvs = [
-        [0.0, 0.0], // Bottom-left
-        [1.0, 0.0], // Bottom-right
-        [1.0, 1.0], // Top-right
-        [0.0, 1.0], // Top-left
-    ];
-
-    for (normal, corners) in faces {
-        let base_index = (vertices.len() / 8) as u32;
-
-        // Add 4 vertices per face
-        for (i, position) in corners.into_iter().enumerate() {
-            let uv = face_uvs[i];
-
-            vertices.extend_from_slice(&[
-                // Position
-                position.x,
-                position.y,
-                position.z,
-
-                // Normal
-                normal.x,
-                normal.y,
-                normal.z,
-
-                // UV
-                uv[0],
-                uv[1],
-            ]);
-        }
-
-        // Two triangles per face
-        indices.extend_from_slice(&[
-            base_index, base_index + 1, base_index + 2,
-            base_index, base_index + 2, base_index + 3,
-        ]);
-    }
-
-    (vertices, indices)
-}
-
-fn load_shader_source(path: &str) -> String {
-    let shader_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join(path);
-
-    fs::read_to_string(shader_path).expect("Failed to load file")
-}
 
 fn main() {
     use glfw::fail_on_errors;
@@ -177,65 +60,15 @@ fn main() {
         gl.enable(glow::DEPTH_TEST);
 
 
-        let (cube_vertices, cube_indeces)= create_cube_mesh();
+        let (cube_vertices, cube_indeces)= Shape::Sphere { radius: 1.0, sectors: 36, stacks: 18 }.generate();
         let cube_mesh = Mesh::new(&gl, &cube_vertices, &cube_indeces);
         let texture = Texture::new(&gl, "assets/textures/crate.jpg");
-        let vertex_shader_source =
-            load_shader_source("shaders/basic.vert");
+        let shader = Shader::new(
+            &gl,
+            "shaders/basic.vert",
+            "shaders/basic.frag",
+        ).expect("Failed to create shader");
 
-        let fragment_shader_source =
-            load_shader_source("shaders/basic.frag");
-        let vertext_shader = gl.create_shader(glow::VERTEX_SHADER).unwrap();
-
-        gl.shader_source(vertext_shader,&vertex_shader_source);
-
-        gl.compile_shader(vertext_shader);
-
-        assert!(
-            gl.get_shader_compile_status(vertext_shader),
-            "{}", 
-            &gl.get_shader_info_log(vertext_shader)
-        );
-
-        let fragment_shader = gl.create_shader(glow::FRAGMENT_SHADER).unwrap();
-
-        gl.shader_source(fragment_shader, &fragment_shader_source);
-
-        gl.compile_shader(fragment_shader);
-
-        assert!(
-            gl.get_shader_compile_status(fragment_shader),
-            "{}",
-            &gl.get_shader_info_log(fragment_shader)
-        );
-
-        let program = gl.create_program().unwrap();
-
-        gl.attach_shader(program, vertext_shader);
-        gl.attach_shader(program, fragment_shader);
-        gl.link_program(program);
-
-        assert!(
-            gl.get_program_link_status(program),
-            "{}",
-            gl.get_program_info_log(program)
-        );
-
-        gl.delete_shader(vertext_shader);
-        gl.delete_shader(fragment_shader);
-
-        let model_location = gl.get_uniform_location(program, "model");
-        let view_location = gl.get_uniform_location(program, "view");
-        let projection_location = gl.get_uniform_location(program, "projection");
-
-        let object_color_location =
-            gl.get_uniform_location(program, "objectColor");
-
-        let light_color_location =
-            gl.get_uniform_location(program, "lightColor");
-
-        let light_dir_location =
-            gl.get_uniform_location(program, "lightDir");
 
         let model = Mat4::IDENTITY;
 
@@ -248,7 +81,41 @@ fn main() {
 
         let mut camera = Camera::new(
             Vec3::new(0.0, 0.0, 3.0)
-        );   
+        );  
+
+        let mut light_manager = LightManager::new();
+
+        light_manager.add(Light::Directional(DirectionalLight {
+            direction: Vec3::new(-0.2, -1.0, -0.3),
+            color: Vec3::ONE,
+            intensity: 1.0,
+        }));
+        light_manager.add(Light::Point(PointLight {
+            position: Vec3::new(2.0, 2.0, 2.0),
+            color: Vec3::new(1.0, 0.0, 0.0),
+            intensity: 2.0,
+
+            constant: 1.0,
+            linear: 0.09,
+            quadratic: 0.032,
+        }));
+
+        light_manager.add(Light::Point(PointLight {
+            position: Vec3::new(-2.0, 1.0, 0.0),
+            color: Vec3::new(0.0, 0.0, 1.0),
+            intensity: 2.0,
+
+            constant: 1.0,
+            linear: 0.09,
+            quadratic: 0.032,
+        }));
+
+        let material = Material {
+            ambient: Vec3::splat(1.0),
+            diffuse: Vec3::ONE,
+            specular: Vec3::ONE,
+            shininess: 32.0,
+        };
         let mut last_frame = Instant::now();
         window.set_cursor_pos_polling(true);
         window.set_cursor_mode(glfw::CursorMode::Disabled);
@@ -257,7 +124,7 @@ fn main() {
         let mut first_mouse = true;
         while !window.should_close() {
 
-            
+
             let current_frame = Instant::now();
 
             let delta_time = current_frame
@@ -338,70 +205,157 @@ fn main() {
             if window.get_key(Key::LeftShift) == Action::Press {
                 camera.position.y -= velocity;
             }
-
+            gl.clear_color(0.1, 0.1, 0.1, 1.0);
+            gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
+            shader.bind(&gl);
             // Camera matrix
             let view = camera.view_matrix();
 
-            gl.clear_color(0.1, 0.1, 0.1, 1.0);
-            gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
+            shader.set_mat4(&gl, "model", &model);
+            shader.set_mat4(&gl, "view", &view);
+            shader.set_mat4(&gl, "projection", &projection);
+            shader.set_vec3(&gl, "viewPos", camera.position);
 
-            gl.use_program(Some(program));
+            let mut directional_count = 0;
+            let mut point_count = 0;
+            let mut spot_count = 0;
 
+            for light in &light_manager.lights {
+                match light {
+                    Light::Directional(light) => {
+                        let prefix = format!("directionalLights[{}]", directional_count);
 
-            gl.uniform_matrix_4_f32_slice(
-                model_location.as_ref(),
-                false,
-                &model.to_cols_array(),
-            );
+                        shader.set_vec3(
+                            &gl,
+                            &format!("{}.direction", prefix),
+                            light.direction,
+                        );
 
-            gl.uniform_matrix_4_f32_slice(
-                view_location.as_ref(), 
-                false, 
-                &view.to_cols_array()
-            );
+                        shader.set_vec3(
+                            &gl,
+                            &format!("{}.color", prefix),
+                            light.color,
+                        );
 
-            gl.uniform_matrix_4_f32_slice(
-                projection_location.as_ref(), 
-                false, 
-                &projection.to_cols_array()
-            );
+                        shader.set_float(
+                            &gl,
+                            &format!("{}.intensity", prefix),
+                            light.intensity,
+                        );
 
-            // Object color (orange/red)
-            gl.uniform_3_f32(
-                object_color_location.as_ref(),
-                1.0, 0.3, 0.2,
-            );
+                        directional_count += 1;
+                    }
 
-            // Light color (white)
-            gl.uniform_3_f32(
-                light_color_location.as_ref(),
-                1.0, 1.0, 1.0,
-            );
+                    Light::Point(light) => {
+                        let prefix = format!("pointLights[{}]", point_count);
 
-            // Direction toward the light source
-            gl.uniform_3_f32(
-                light_dir_location.as_ref(),
-                -0.5, 1.0, 0.3,
-            );
-            texture.bind(&gl, 0);
-            let texture_location = gl.get_uniform_location(
-                program, 
-                "texture1"
-            );
-            gl.uniform_1_i32(
-                texture_location.as_ref(), 
-                0
-            );
+                        shader.set_vec3(
+                            &gl,
+                            &format!("{}.position", prefix),
+                            light.position,
+                        );
+
+                        shader.set_vec3(
+                            &gl,
+                            &format!("{}.color", prefix),
+                            light.color,
+                        );
+
+                        shader.set_float(
+                            &gl,
+                            &format!("{}.intensity", prefix),
+                            light.intensity,
+                        );
+
+                        shader.set_float(
+                            &gl,
+                            &format!("{}.constant", prefix),
+                            light.constant,
+                        );
+
+                        shader.set_float(
+                            &gl,
+                            &format!("{}.linear", prefix),
+                            light.linear,
+                        );
+
+                        shader.set_float(
+                            &gl, 
+                            &format!("{}.quadratic", prefix),
+                            light.quadratic,
+                        );
+
+                        point_count += 1;
+                    }
+
+                    Light::Spot(light) => {
+                        let prefix = format!("spotLights[{}]", spot_count);
+
+                        shader.set_vec3(
+                            &gl,
+                            &format!("{}.position", prefix),
+                            light.position,
+                        );
+
+                        shader.set_vec3(
+                            &gl,
+                            &format!("{}.direction", prefix),
+                            light.direction,
+                        );
+
+                        shader.set_vec3(
+                            &gl,
+                            &format!("{}.color", prefix),
+                            light.color,
+                        );
+
+                        shader.set_float(
+                            &gl,
+                            &format!("{}.intensity", prefix),
+                            light.intensity,
+                        );
+
+                        shader.set_float(
+                            &gl, 
+                            &format!("{}.cutOff", prefix),
+                            light.cut_off,
+                        );
+
+                        shader.set_float(
+                            &gl,    
+                            &format!("{}.outerCutOff", prefix),
+                            light.outer_cut_off,
+                        );
+
+                        spot_count += 1;
+                    }
+                }
+            }
+            shader.set_int(&gl, "directionalLightCount", directional_count as i32);
+            shader.set_int(&gl, "pointLightCount", point_count as i32);
+            shader.set_int(&gl, "spotLightCount", spot_count as i32);
+            // Material
+            shader.set_vec3(&gl, "materialAmbient", material.ambient);
+            shader.set_vec3(&gl, "materialDiffuse", material.diffuse);
+            shader.set_vec3(&gl, "materialSpecular", material.specular);
+            shader.set_float(&gl, "materialShininess", material.shininess);
+
+            // Texture
+            shader.set_int(&gl, "hasTexture", 0);
+            //texture.bind(&gl, 0);
+
+            shader.set_int(&gl, "texture1", 0);
 
             cube_mesh.draw(&gl);
 
             window.swap_buffers();
 
         }
-        gl.delete_program(program);
+        shader.delete(&gl);
         gl.delete_buffer(cube_mesh.vbo);
         gl.delete_vertex_array(cube_mesh.vao);
 
     }
 
 }
+
