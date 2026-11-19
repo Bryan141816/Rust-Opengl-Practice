@@ -3,10 +3,11 @@ extern crate glfw;
 
 use std::time::Instant;
 
-use glfw::{Action, Context, Key::{self}};
 use glow::HasContext;
 use glam::{Vec3, Mat4};
 use glam::camera::rh::proj::opengl;
+
+use crate::engine::window::{GlfwWindow, Window};
 
 use crate::engine::camera::Camera;
 use crate::engine::mesh::Mesh;
@@ -16,36 +17,15 @@ use crate::engine::lighting::{Light, DirectionalLight, PointLight};
 use crate::engine::lighting::Material;
 use crate::engine::lighting::LightManager;
 use crate::engine::shader::Shader;
-
+use crate::engine::window::Key;
 const WINDOW_TITLE: &str = "My App";
 
 fn main() {
-    use glfw::fail_on_errors;
-
-    let mut glfw = glfw::init(fail_on_errors!()).unwrap();
-
-    glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
-    glfw.window_hint(
-        glfw::WindowHint::OpenGlProfile(
-            glfw::OpenGlProfileHint::Core
-        )
-    );
-
-    let (mut window, event) = glfw
-        .create_window(
-            800, 
-            600, 
-            WINDOW_TITLE, 
-            glfw::WindowMode::Windowed
-        )
-        .expect("Failed to create GLFW window");
-
-    window.make_current();
-    window.set_key_polling(true);
+    let mut window = GlfwWindow::new(800, 600, WINDOW_TITLE);
 
     let gl = unsafe {
         glow::Context::from_loader_function_cstr(|s| {
-            glfw.get_proc_address_raw(s.to_str().unwrap())
+            window.glfw().get_proc_address_raw(s.to_str().unwrap())
                 .map_or(
                     std::ptr::null(), 
                     |f| f as *const () as *const std::ffi::c_void
@@ -117,8 +97,7 @@ fn main() {
             shininess: 32.0,
         };
         let mut last_frame = Instant::now();
-        window.set_cursor_pos_polling(true);
-        window.set_cursor_mode(glfw::CursorMode::Disabled);
+
         let mut last_mouse_x = 400.0;
         let mut last_mouse_y = 300.0;
         let mut first_mouse = true;
@@ -133,9 +112,9 @@ fn main() {
 
             last_frame = current_frame;
 
-            glfw.poll_events();
+            window.poll_events();
 
-            for (_, event) in glfw::flush_messages(&event) {
+            for (_, event) in glfw::flush_messages(&window.events()) {
                 match event {
                     glfw::WindowEvent::CursorPos(x, y) => {
                         if first_mouse {
@@ -163,16 +142,6 @@ fn main() {
                             89.0_f32.to_radians(),
                         );
                     }
-
-                    glfw::WindowEvent::Key(
-                        Key::Escape,
-                        _,
-                        Action::Press,
-                        _
-                    ) => {
-                        window.set_should_close(true);
-                    }
-
                     _ => {}
                 }
             }
@@ -182,33 +151,38 @@ fn main() {
             let right = direction.cross(Vec3::Y).normalize();
 
             let velocity = camera.speed * delta_time;
+    
+            if window.is_key_pressed(Key::Escape) {
+                window.set_should_close(true);
+            }
 
-            if window.get_key(Key::W) == Action::Press {
+            if window.is_key_pressed(Key::W){
                 camera.position += direction * velocity;
             }
 
-            if window.get_key(Key::S) == Action::Press {
+            if window.is_key_pressed(Key::S){
                 camera.position -= direction * velocity;
             }
 
-            if window.get_key(Key::A) == Action::Press {
+            if window.is_key_pressed(Key::A){
                 camera.position -= right * velocity;
             }
 
-            if window.get_key(Key::D) == Action::Press {
+            if window.is_key_pressed(Key::D){
                 camera.position += right * velocity;
             }
-            if window.get_key(Key::Space) == Action::Press {
+            if window.is_key_pressed(Key::Space){
                 camera.position.y += velocity;
             }
 
-            if window.get_key(Key::LeftShift) == Action::Press {
+            if window.is_key_pressed(Key::LeftShift) {
                 camera.position.y -= velocity;
             }
+
             gl.clear_color(0.1, 0.1, 0.1, 1.0);
             gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
             shader.bind(&gl);
-            // Camera matrix
+
             let view = camera.view_matrix();
 
             shader.set_mat4(&gl, "model", &model);

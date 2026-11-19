@@ -195,4 +195,3 @@ void main() {
     result *= texColor.rgb;
     FragColor = vec4(result, texColor.a);
 }
-
