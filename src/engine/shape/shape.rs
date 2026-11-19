@@ -1,5 +1,7 @@
-use glam::{Vec3};
+use glam::{Vec3, Vec2};
 
+use crate::engine::mesh::Mesh;
+use crate::engine::mesh::Vertex;
 pub enum Shape {
     Cube {
         size: f32,
@@ -11,9 +13,9 @@ pub enum Shape {
     }
 }
 impl Shape {
-    pub fn generate(&self) -> (Vec<f32>, Vec<u32>) {
+    pub fn generate(&self) -> Mesh {
         match &self {
-            Shape::Cube  { size } => {
+            Shape::Cube { size } => {
                 let mut vertices = Vec::new();
                 let mut indices = Vec::new();
 
@@ -21,99 +23,89 @@ impl Shape {
                     (
                         Vec3::Z,
                         [
-                        Vec3::new(-*size, -*size,  *size),
-                        Vec3::new( *size, -*size,  *size),
-                        Vec3::new( *size,  *size,  *size),
-                        Vec3::new(-*size,  *size,  *size),
+                            Vec3::new(-*size, -*size, *size),
+                            Vec3::new(*size, -*size, *size),
+                            Vec3::new(*size, *size, *size),
+                            Vec3::new(-*size, *size, *size),
                         ],
                     ),
-
                     (
                         -Vec3::Z,
                         [
-                        Vec3::new( *size, -*size, -*size),
-                        Vec3::new(-*size, -*size, -*size),
-                        Vec3::new(-*size,  *size, -*size),
-                        Vec3::new( *size,  *size, -*size),
+                            Vec3::new(*size, -*size, -*size),
+                            Vec3::new(-*size, -*size, -*size),
+                            Vec3::new(-*size, *size, -*size),
+                            Vec3::new(*size, *size, -*size),
                         ],
                     ),
-
                     (
                         -Vec3::X,
                         [
-                        Vec3::new(-*size, -*size, -*size),
-                        Vec3::new(-*size, -*size,  *size),
-                        Vec3::new(-*size,  *size,  *size),
-                        Vec3::new(-*size,  *size, -*size),
+                            Vec3::new(-*size, -*size, -*size),
+                            Vec3::new(-*size, -*size, *size),
+                            Vec3::new(-*size, *size, *size),
+                            Vec3::new(-*size, *size, -*size),
                         ],
                     ),
-
                     (
                         Vec3::X,
                         [
-                        Vec3::new( *size, -*size,  *size),
-                        Vec3::new( *size, -*size, -*size),
-                        Vec3::new( *size,  *size, -*size),
-                        Vec3::new( *size,  *size,  *size),
+                            Vec3::new(*size, -*size, *size),
+                            Vec3::new(*size, -*size, -*size),
+                            Vec3::new(*size, *size, -*size),
+                            Vec3::new(*size, *size, *size),
                         ],
                     ),
-
                     (
                         Vec3::Y,
                         [
-                        Vec3::new(-*size,  *size,  *size),
-                        Vec3::new( *size,  *size,  *size),
-                        Vec3::new( *size,  *size, -*size),
-                        Vec3::new(-*size,  *size, -*size),
+                            Vec3::new(-*size, *size, *size),
+                            Vec3::new(*size, *size, *size),
+                            Vec3::new(*size, *size, -*size),
+                            Vec3::new(-*size, *size, -*size),
                         ],
                     ),
-
                     (
                         -Vec3::Y,
                         [
-                        Vec3::new(-*size, -*size, -*size),
-                        Vec3::new( *size, -*size, -*size),
-                        Vec3::new( *size, -*size,  *size),
-                        Vec3::new(-*size, -*size,  *size),
+                            Vec3::new(-*size, -*size, -*size),
+                            Vec3::new(*size, -*size, -*size),
+                            Vec3::new(*size, -*size, *size),
+                            Vec3::new(-*size, -*size, *size),
                         ],
                     ),
-                    ];
+                ];
 
-                    let face_uvs = [
-                        [0.0, 0.0], 
-                        [1.0, 0.0], 
-                        [1.0, 1.0], 
-                        [0.0, 1.0], 
-                    ];
+                let face_uvs = [
+                    Vec2::new(0.0, 0.0),
+                    Vec2::new(1.0, 0.0),
+                    Vec2::new(1.0, 1.0),
+                    Vec2::new(0.0, 1.0),
+                ];
 
-                    for (normal, corners) in faces {
-                        let base_index = (vertices.len() / 8) as u32;
+                for (normal, corners) in faces {
+                    let base_index = vertices.len() as u32;
 
-                        for (i, position) in corners.into_iter().enumerate() {
-                            let uv = face_uvs[i];
-
-                            vertices.extend_from_slice(&[
-                                position.x,
-                                position.y,
-                                position.z,
-
-                                normal.x,
-                                normal.y,
-                                normal.z,
-
-                                uv[0],
-                                uv[1],
-                            ]);
-                        }
-
-                        indices.extend_from_slice(&[
-                            base_index, base_index + 1, base_index + 2,
-                            base_index, base_index + 2, base_index + 3,
-                        ]);
+                    for (i, position) in corners.into_iter().enumerate() {
+                        vertices.push(Vertex {
+                            position,
+                            normal,
+                            tex_coords: face_uvs[i],
+                        });
                     }
 
-                    (vertices, indices)
+                    indices.extend_from_slice(&[
+                        base_index,
+                        base_index + 1,
+                        base_index + 2,
 
+                        base_index,
+                        base_index + 2,
+                        base_index + 3,
+                    ]);
+                }
+
+                Mesh::new(vertices, indices)
             },
             Shape::Sphere { radius, sectors, stacks } => {
                 let mut vertices = Vec::new();
@@ -136,22 +128,22 @@ impl Shape {
                         let y = xy * sector_angle.sin();
 
                         // Position
-                        vertices.push(x);
-                        vertices.push(y);
-                        vertices.push(z);
+                        let position = Vec3::new(x, y, z);
 
                         // Normal
-                        let normal = Vec3::new(x, y, z).normalize();
+                        let normal = position.normalize();
 
-                        vertices.push(normal.x);
-                        vertices.push(normal.y);
-                        vertices.push(normal.z);
-
+                        // Texture coordinates
                         let u = j as f32 / *sectors as f32;
                         let v = i as f32 / *stacks as f32;
 
-                        vertices.push(u);
-                        vertices.push(v);
+                        let tex_coords = Vec2::new(u, v);
+
+                        vertices.push(Vertex {
+                            position,
+                            normal,
+                            tex_coords,
+                        });
                     }
                 }
 
@@ -161,20 +153,21 @@ impl Shape {
 
                     for j in 0..*sectors {
                         if i != 0 {
-                            indices.push(k1 + j);
-                            indices.push(k2 + j);
-                            indices.push(k1 + j + 1);
+                            indices.push((k1 + j) as u32);
+                            indices.push((k2 + j) as u32);
+                            indices.push((k1 + j + 1) as u32);
                         }
 
                         if i != *stacks - 1 {
-                            indices.push(k1 + j + 1);
-                            indices.push(k2 + j);
-                            indices.push(k2 + j + 1);
+                            indices.push((k1 + j + 1) as u32);
+                            indices.push((k2 + j) as u32);
+                            indices.push((k2 + j + 1) as u32);
                         }
                     }
                 }
 
-                (vertices, indices)
-            }        }
+                Mesh::new(vertices, indices)
+            }
+        }
     }
 }
