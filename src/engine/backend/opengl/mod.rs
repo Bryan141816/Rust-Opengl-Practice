@@ -13,11 +13,7 @@ use crate::engine::window::GlfwWindow;
 use crate::engine::backend::opengl::OpenGLRendererBackend;
 
 pub fn create(config: &EngineConfig) -> EngineBackend {
-    let window = GlfwWindow::new(
-        config.window_width,
-        config.window_height,
-        &config.window_title,
-    );
+    let window = GlfwWindow::new(&config.window);
 
     let gl = unsafe {
         glow::Context::from_loader_function_cstr(|s| {

@@ -6,6 +6,7 @@ use glam::{Mat4, Vec3};
 use crate::engine::engine::Engine;
 use crate::engine::config::EngineConfig;
 use crate::engine::camera::Camera;
+use crate::engine::input::MouseCursor;
 use crate::engine::shape::Shape;
 use crate::engine::texture::Texture;
 use crate::engine::shader::{ShaderId, ShaderSource};
@@ -15,7 +16,12 @@ use crate::engine::object::RenderObject;
 use crate::application::MyApp;
 
 fn main() {
-    let mut engine = Engine::new(EngineConfig::default());
+    let mut engine_config = EngineConfig::default();
+
+    engine_config.window.title = "Hello world".into();
+    engine_config.window.cursor_mode = MouseCursor::Disabled;
+    
+    let mut engine = Engine::new(engine_config);
     
     let sphere_mesh = Shape::Sphere {
         radius: 1.0,

@@ -1,3 +1,5 @@
+use crate::engine::window::WindowConfig;
+
 #[derive(Debug, Clone, Copy)]
 pub enum GraphicsBackend {
     OpenGL,
@@ -5,18 +7,14 @@ pub enum GraphicsBackend {
 }
 
 pub struct EngineConfig {
-    pub window_width: u32,
-    pub window_height: u32,
-    pub window_title: String,
+    pub window: WindowConfig,
     pub graphics_backend: GraphicsBackend,
 }
 
 impl Default for EngineConfig {
     fn default() -> Self {
         Self {
-            window_width: 800,
-            window_height: 600,
-            window_title: "My App".to_string(),
+            window: WindowConfig::default(),
             graphics_backend: GraphicsBackend::OpenGL,
         }
     }

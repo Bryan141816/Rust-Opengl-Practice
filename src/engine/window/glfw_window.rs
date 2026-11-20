@@ -13,10 +13,9 @@ use glfw::{
     MouseButton as GlfwMouseButton,
     CursorMode,
 };
-use crate::engine::input::{
-    Key as EngineKey,
-    MouseButton, MouseCursor, MousePosition, MouseDelta,
-};
+use crate::engine::{input::{
+    Key as EngineKey, MouseButton, MouseCursor, MouseDelta, MousePosition,
+}, window::WindowConfig};
 use std::ffi::{CStr, c_void};
 use super::window::Window;
 
@@ -32,7 +31,7 @@ pub struct GlfwWindow {
 }
 
 impl GlfwWindow {
-pub fn new(width: u32, height: u32, title: &str) -> Self {
+pub fn new(config: &WindowConfig) -> Self {
         let mut glfw = glfw::init(fail_on_errors!())
             .expect("Failed to initialize GLFW");
 
@@ -43,9 +42,9 @@ pub fn new(width: u32, height: u32, title: &str) -> Self {
 
         let (mut window, events) = glfw
             .create_window(
-                width,
-                height,
-                title,
+                config.width,
+                config.height,
+                &config.title,
                 WindowMode::Windowed,
             )
             .expect("Failed to create GLFW window");
@@ -55,9 +54,21 @@ pub fn new(width: u32, height: u32, title: &str) -> Self {
         window.set_key_polling(true);
         window.set_cursor_pos_polling(true);
         window.set_mouse_button_polling(true);
-        window.set_cursor_mode(CursorMode::Normal);
+        window.set_resizable(config.resizable);
+
+            match config.cursor_mode {
+                MouseCursor::Normal => window.set_cursor_mode(glfw::CursorMode::Normal),
+                MouseCursor::Hidden => window.set_cursor_mode(glfw::CursorMode::Hidden),
+                MouseCursor::Disabled => window.set_cursor_mode(glfw::CursorMode::Disabled),
+            }
 
         let (x, y) = window.get_cursor_pos();
+
+        glfw.set_swap_interval(if config.vsync {
+            glfw::SwapInterval::Sync(1)
+        } else {
+            glfw::SwapInterval::None
+        });
 
         Self {
             glfw,
