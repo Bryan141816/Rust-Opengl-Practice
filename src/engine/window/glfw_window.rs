@@ -18,7 +18,7 @@ use crate::engine::{input::{
 }, window::WindowConfig};
 use std::ffi::{CStr, c_void};
 use super::window::Window;
-
+#[allow(dead_code)]
 pub struct GlfwWindow {
     glfw: Glfw,
     window: PWindow,
@@ -29,7 +29,7 @@ pub struct GlfwWindow {
     last_mouse_position: MousePosition,
     first_mouse: bool,
 }
-
+#[allow(dead_code)]
 impl GlfwWindow {
 pub fn new(config: &WindowConfig) -> Self {
         let mut glfw = glfw::init(fail_on_errors!())

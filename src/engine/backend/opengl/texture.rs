@@ -1,5 +1,5 @@
 use glow::HasContext;
-use crate::engine::{backend::opengl::texture, texture::Texture};
+use crate::engine::texture::Texture;
 pub struct OpenGLTexture {
     pub id: glow::NativeTexture,
 }

@@ -1,5 +1,5 @@
 use crate::engine::input::MouseCursor;
-
+#[allow(dead_code)]
 pub struct WindowConfig {
     pub title: String,
     pub width: u32,

@@ -13,3 +13,4 @@ pub mod input;
 pub mod engine;
 pub mod time;
 pub mod application;
+pub mod asset;

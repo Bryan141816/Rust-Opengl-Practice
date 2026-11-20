@@ -1,6 +1,6 @@
 use crate::engine::input::Key as EngineKey;
 use crate::engine::input::{MouseButton, MousePosition, MouseDelta, MouseCursor};
-
+#[allow(dead_code)]
 pub trait Window {
     fn should_close(&self) -> bool;
 

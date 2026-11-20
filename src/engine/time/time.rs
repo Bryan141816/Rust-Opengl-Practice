@@ -1,5 +1,5 @@
 use std::time::Instant;
-
+#[allow(dead_code)]
 pub struct Time {
     start_time: Instant,
     last_frame: Instant,
@@ -7,7 +7,7 @@ pub struct Time {
     elapsed_time: f32,
     frame_count: u64,
 }
-
+#[allow(dead_code)]
 impl Time {
     pub fn new() -> Self {
         let now = Instant::now();

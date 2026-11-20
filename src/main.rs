@@ -20,7 +20,7 @@ fn main() {
 
     engine_config.window.title = "Hello world".into();
     engine_config.window.cursor_mode = MouseCursor::Disabled;
-    
+
     let mut engine = Engine::new(engine_config);
     
     let sphere_mesh = Shape::Sphere {
