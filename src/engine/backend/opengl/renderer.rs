@@ -2,10 +2,11 @@ use std::collections::HashMap;
 
 use glow::HasContext;
 use super::light_uniforms::LightUniforms;
-
+use crate::engine::backend::renderer::Renderer;
 use crate::engine::{
-    mesh::{Mesh, MeshHandle}, scene::Scene, shader::{ShaderId, ShaderSource}, texture::{Texture, TextureHandle}, window::Key::S
+    mesh::{Mesh, MeshHandle}, scene::Scene, shader::{ShaderId, ShaderSource}, texture::{Texture, TextureHandle}
 };
+
 
 use super::{
     mesh::OpenGLMesh,
@@ -13,7 +14,7 @@ use super::{
     texture::OpenGLTexture,
 };
 use glam::camera::{rh::proj::opengl};
-pub struct OpenGLRenderer {
+pub struct OpenGLRendererBackend {
     gl: glow::Context,
 
     shaders: HashMap<ShaderId, OpenGLShader>,
@@ -23,7 +24,7 @@ pub struct OpenGLRenderer {
     next_mesh_id: u32,
     next_texture_id: u32,
 }
-impl OpenGLRenderer {
+impl OpenGLRendererBackend {
     pub unsafe fn new(gl: glow::Context) -> Self {
         unsafe {
             gl.enable(glow::DEPTH_TEST);
@@ -40,7 +41,7 @@ impl OpenGLRenderer {
             next_texture_id: 0,
         }
     }
-    pub unsafe fn load_shader(
+    pub unsafe fn _load_shader(
         &mut self,
         id: ShaderId,
         source: &ShaderSource,
@@ -50,7 +51,7 @@ impl OpenGLRenderer {
             self.shaders.insert(id, shader);
         }
     }
-    pub unsafe fn upload_mesh(
+    pub unsafe fn _upload_mesh(
         &mut self,
         mesh: &Mesh,
     ) -> MeshHandle {
@@ -66,7 +67,7 @@ impl OpenGLRenderer {
             handle
         }
     }
-    pub unsafe fn upload_texture(
+    pub unsafe fn _upload_texture(
         &mut self,
         texture: &Texture,
     ) -> TextureHandle {
@@ -83,7 +84,7 @@ impl OpenGLRenderer {
         }
     }
 
-    pub unsafe fn begin_frame(&self) {
+    unsafe fn _begin_frame(&self) {
         unsafe {
             self.gl.clear_color(0.1, 0.1, 0.1, 1.0);
 
@@ -93,7 +94,7 @@ impl OpenGLRenderer {
         }
     }
 
-    pub unsafe fn render(&mut self, scene: &Scene) {
+    unsafe fn _render(&mut self, scene: &Scene) {
         let camera = &scene.camera;
         let projection = opengl::perspective(
             camera.fov,
@@ -141,24 +142,59 @@ impl OpenGLRenderer {
 
     }
 
-    pub unsafe fn destroy(&mut self) {
-    unsafe {
-        for shader in self.shaders.values() {
-            shader.destroy(&self.gl);
-        }
+    unsafe fn _destroy(&mut self) {
+        unsafe {
+            for shader in self.shaders.values() {
+                shader.destroy(&self.gl);
+            }
 
-        for mesh in self.meshes.values() {
-            mesh.destroy(&self.gl);
-        }
+            for mesh in self.meshes.values() {
+                mesh.destroy(&self.gl);
+            }
 
-        for texture in self.textures.values() {
-            texture.destroy(&self.gl);
-        }
+            for texture in self.textures.values() {
+                texture.destroy(&self.gl);
+            }
 
-        self.shaders.clear();
-        self.meshes.clear();
-        self.textures.clear();
+            self.shaders.clear();
+            self.meshes.clear();
+            self.textures.clear();
+        }
     }
+
 }
 
+impl Renderer for OpenGLRendererBackend {
+    fn begin_frame(&mut self) {
+        unsafe {
+            self._begin_frame();
+        }
+    }
+    fn render(&mut self, scene: &Scene) {
+        unsafe  {
+            self._render(scene);
+        }
+    }
+    fn destroy(&mut self) {
+        unsafe  {
+            self._destroy();
+        }
+    }
+    fn upload_mesh(&mut self, mesh: &Mesh) -> MeshHandle {
+        unsafe {
+            self._upload_mesh(mesh)
+        }
+    }
+
+    fn upload_texture(&mut self, texture: &Texture) -> TextureHandle {
+        unsafe {
+            self._upload_texture(texture)
+        }
+    }
+
+    fn load_shader(&mut self, id: ShaderId, source: &ShaderSource) {
+        unsafe {
+            self._load_shader(id, source)
+        }
+    }
 }

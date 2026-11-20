@@ -1,4 +1,5 @@
-use super::input::Key as EngineKey;
+use crate::engine::input::Key as EngineKey;
+use crate::engine::input::{MouseButton, MousePosition, MouseDelta, MouseCursor};
 
 pub trait Window {
     fn should_close(&self) -> bool;
@@ -12,4 +13,9 @@ pub trait Window {
     fn size(&self) -> (u32, u32);
 
     fn is_key_pressed(&self, key: EngineKey) -> bool;
+
+    fn is_mouse_button_pressed(&self, button: MouseButton) -> bool;
+    fn mouse_position(&self) -> MousePosition;
+    fn mouse_delta(&self) -> MouseDelta;
+    fn set_cursor_mode(&mut self, mode: MouseCursor);
 }
