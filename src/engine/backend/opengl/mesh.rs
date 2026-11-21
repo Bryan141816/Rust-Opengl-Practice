@@ -1,6 +1,6 @@
 use glow::HasContext;
 
-use crate::engine::mesh::Mesh;
+use crate::engine::scene::resources::Mesh;
 
 pub struct OpenGLMesh {
     pub vao: glow::NativeVertexArray,

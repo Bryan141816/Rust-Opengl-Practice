@@ -1,7 +1,6 @@
 use glam::{Vec3, Vec2};
 
-use crate::engine::mesh::Mesh;
-use crate::engine::mesh::Vertex;
+use crate::engine::scene::resources::{Mesh, Vertex};
 pub enum Shape {
     Cube {
         size: f32,

@@ -1,5 +1,5 @@
 use crate::engine::{
-    lighting::Light,
+    scene::components::Light,
     backend::opengl::OpenGLShader,
 
 };

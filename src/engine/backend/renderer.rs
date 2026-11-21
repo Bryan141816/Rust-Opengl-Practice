@@ -1,5 +1,5 @@
 use crate::engine::scene::Scene;
-use crate::engine::mesh::{Mesh, MeshHandle};
+use crate::engine::scene::resources::{Mesh, MeshHandle};
 use crate::engine::texture::{Texture, TextureHandle};
 use crate::engine::shader::{ShaderId, ShaderSource};
 pub trait Renderer {
@@ -10,5 +10,5 @@ pub trait Renderer {
 
     fn upload_texture(&mut self, texture: &Texture) -> TextureHandle;
 
-    fn load_shader(&mut self, id: ShaderId, source: &ShaderSource);
+    fn upload_shader(&mut self, source: &ShaderSource) -> ShaderId;
 }

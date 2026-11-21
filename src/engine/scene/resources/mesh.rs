@@ -1,4 +1,14 @@
-use super::vertex::Vertex;
+use glam::{Vec2, Vec3};
+
+use crate::engine::shape::Shape;
+
+#[derive(Clone, Copy, Debug)]
+#[repr(C)]
+pub struct Vertex {
+    pub position: Vec3,
+    pub normal: Vec3,
+    pub tex_coords: Vec2,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MeshHandle(pub u32);

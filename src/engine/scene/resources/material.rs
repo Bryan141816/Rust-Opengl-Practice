@@ -3,6 +3,9 @@ use crate::engine::{
     shader::ShaderId,
     texture::TextureHandle,
 };
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MaterialHandle(pub u32);
+
 #[derive(Clone)]
 pub struct Material {
     pub shader: ShaderId,

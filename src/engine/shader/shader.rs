@@ -1,11 +1,11 @@
 use std::{fs, path::Path};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ShaderId(pub String);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ShaderId(pub u32);
 
 impl ShaderId {
-    pub fn new(name: impl Into<String>) -> Self {
-        Self(name.into())
+    pub fn new(id: u32) -> Self {
+        Self(id)
     }
 }
 

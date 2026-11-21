@@ -1,16 +1,17 @@
-pub mod config;
-pub mod mesh;
-pub mod camera;
 pub mod texture;
 pub mod shape;
-pub mod lighting;
 pub mod shader;
 pub mod window;
 pub mod backend;
-pub mod object;
 pub mod scene;
 pub mod input;
-pub mod engine;
 pub mod time;
-pub mod application;
 pub mod asset;
+
+mod application;
+mod config;
+mod engine;
+
+pub use engine::*;
+pub use config::*;
+pub use application::*;

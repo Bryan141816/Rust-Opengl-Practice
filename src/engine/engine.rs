@@ -1,10 +1,10 @@
+use crate::engine::asset::AssetManager;
 use crate::engine::backend::factory::create_backend;
 use crate::engine::config::EngineConfig;
-
+use crate::engine::scene::resources::{Mesh, MeshHandle};
 use super::window::Window;
 use super::backend::renderer::Renderer;
 use super::scene::Scene;
-use super::mesh::{Mesh, MeshHandle};
 use super::shader::{ShaderId, ShaderSource};
 use super::texture::{Texture, TextureHandle};
 use super::time::Time;
@@ -51,15 +51,15 @@ impl Engine {
     }
 }
 impl Engine {
-    pub fn create_mesh(&mut self, mesh: &Mesh) -> MeshHandle {
+    fn create_mesh(&mut self, mesh: &Mesh) -> MeshHandle {
         self.renderer.upload_mesh(mesh)
     }
 
-    pub fn create_texture(&mut self, texture: &Texture) -> TextureHandle {
+    fn create_texture(&mut self, texture: &Texture) -> TextureHandle {
         self.renderer.upload_texture(texture)
     }
 
-    pub fn load_shader(&mut self, id: ShaderId, source: &ShaderSource) {
-        self.renderer.load_shader(id, source);
+    fn load_shader(&mut self, source: &ShaderSource) -> ShaderId {
+        self.renderer.upload_shader(source)
     }
 }

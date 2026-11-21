@@ -4,7 +4,7 @@ use glow::HasContext;
 use super::light_uniforms::LightUniforms;
 use crate::engine::backend::renderer::Renderer;
 use crate::engine::{
-    mesh::{Mesh, MeshHandle}, scene::Scene, shader::{ShaderId, ShaderSource}, texture::{Texture, TextureHandle}
+    scene::resources::{Mesh, MeshHandle}, scene::Scene, shader::{ShaderId, ShaderSource}, texture::{Texture, TextureHandle}
 };
 
 
@@ -23,6 +23,7 @@ pub struct OpenGLRendererBackend {
 
     next_mesh_id: u32,
     next_texture_id: u32,
+    next_shader_id: u32,
 }
 impl OpenGLRendererBackend {
     pub unsafe fn new(gl: glow::Context) -> Self {
@@ -39,16 +40,20 @@ impl OpenGLRendererBackend {
 
             next_mesh_id: 0,
             next_texture_id: 0,
+            next_shader_id: 0,
         }
     }
-    pub unsafe fn _load_shader(
+    pub unsafe fn _upload_shader(
         &mut self,
-        id: ShaderId,
         source: &ShaderSource,
-    ) {
+    ) -> ShaderId {
         unsafe {
             let shader = OpenGLShader::new(&self.gl, source).expect("Failed to load shader");
-            self.shaders.insert(id, shader);
+            let handle = ShaderId::new(self.next_shader_id);
+            self.next_shader_id += 1;
+            self.shaders.insert(handle, shader);
+            handle
+
         }
     }
     pub unsafe fn _upload_mesh(
@@ -95,47 +100,47 @@ impl OpenGLRendererBackend {
     }
 
     unsafe fn _render(&mut self, scene: &Scene) {
-        let camera = &scene.camera;
-        let projection = opengl::perspective(
-            camera.fov,
-            camera.aspect_ratio,
-            camera.near_plane,
-            camera.far_plane,
-        );
-        let view = camera.view_matrix();
-        for object in &scene.objects {
-            let shader = self.shaders
-                .get(&object.material.shader)
-                .expect("Shader not found");
+        // let camera = &scene.camera;
+        // let projection = opengl::perspective(
+        //     camera.fov,
+        //     camera.aspect_ratio,
+        //     camera.near_plane,
+        //     camera.far_plane,
+        // );
+        // let view = camera.view_matrix();
+        // for object in &scene.objects {
+        //     let shader = self.shaders
+        //         .get(&object.material.shader)
+        //         .expect("Shader not found");
 
-            let mesh = self.meshes
-                .get(&object.mesh)
-                .expect("Mesh not found");
+        //     let mesh = self.meshes
+        //         .get(&object.mesh)
+        //         .expect("Mesh not found");
 
 
-            unsafe {
-                shader.bind(&self.gl);
+        //     unsafe {
+        //         shader.bind(&self.gl);
                 
-                shader.set_mat4(&self.gl, "model", &object.transform);
-                shader.set_mat4(&self.gl, "view", &view);
-                shader.set_mat4(&self.gl, "projection", &projection);
-                shader.set_vec3(&self.gl, "viewPos", camera.position);
+        //         shader.set_mat4(&self.gl, "model", &object.transform);
+        //         shader.set_mat4(&self.gl, "view", &view);
+        //         shader.set_mat4(&self.gl, "projection", &projection);
+        //         shader.set_vec3(&self.gl, "viewPos", camera.position);
 
-                LightUniforms::upload(&self.gl, shader, &scene.lights.lights);
+        //         LightUniforms::upload(&self.gl, shader, &scene.lights.lights);
 
-                shader.set_vec3(&self.gl, "materialAmbient", object.material.ambient);
-                shader.set_vec3(&self.gl, "materialDiffuse", object.material.diffuse);
-                shader.set_vec3(&self.gl, "materialSpecular", object.material.specular);
-                shader.set_float(&self.gl, "materialShininess", object.material.shininess);
+        //         shader.set_vec3(&self.gl, "materialAmbient", object.material.ambient);
+        //         shader.set_vec3(&self.gl, "materialDiffuse", object.material.diffuse);
+        //         shader.set_vec3(&self.gl, "materialSpecular", object.material.specular);
+        //         shader.set_float(&self.gl, "materialShininess", object.material.shininess);
 
-                if let Some(texture) = object.material.diffuse_texture {
-                    shader.set_int(&self.gl, "hasTexture", 1);
-                    let texture = self.textures.get(&texture).expect("Texture not Found");
-                    texture.bind(&self.gl, 0);
-                } 
-                mesh.draw(&self.gl);
-            }
-        }
+        //         if let Some(texture) = object.material.diffuse_texture {
+        //             shader.set_int(&self.gl, "hasTexture", 1);
+        //             let texture = self.textures.get(&texture).expect("Texture not Found");
+        //             texture.bind(&self.gl, 0);
+        //         } 
+        //         mesh.draw(&self.gl);
+        //     }
+        // }
     }
 
     pub fn end_frame(&self) {
@@ -192,9 +197,9 @@ impl Renderer for OpenGLRendererBackend {
         }
     }
 
-    fn load_shader(&mut self, id: ShaderId, source: &ShaderSource) {
+    fn upload_shader(&mut self,  source: &ShaderSource) -> ShaderId{
         unsafe {
-            self._load_shader(id, source)
+            self._upload_shader(source)
         }
     }
 }

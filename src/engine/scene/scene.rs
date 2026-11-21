@@ -1,25 +1,19 @@
-use crate::engine::{
-    camera::Camera,
-    lighting::LightManager,
-    object::RenderObject,
-};
+use crate::engine::scene::Node;
 
 pub struct Scene {
-    pub camera: Camera,
-    pub objects: Vec<RenderObject>,
-    pub lights: LightManager,
+    root: Node
 }
-
-impl Scene {
-    pub fn new(camera: Camera) -> Self {
+impl Default for Scene {
+    fn default() -> Self {
         Self {
-            camera,
-            objects: Vec::new(),
-            lights: LightManager::new(),
-        }
+            root: Node::new("Root".into()),
+        }   
     }
-
-    pub fn add_object(&mut self, object: RenderObject) {
-        self.objects.push(object);
+}
+impl Scene {
+    pub fn children<I>(&mut self, children: I)
+    where I: IntoIterator<Item = Node>,
+    {
+        self.root.children(children);
     }
 }
