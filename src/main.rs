@@ -55,7 +55,7 @@ fn main() {
                     .transform(
                         Transform::new()
                             .position(Vec3::new(0.0, 5.0, 0.0))
-                            .rotation(Quat::from_rotation_x(-10.0_f32.to_radians())),
+                            .rotation(Quat::from_rotation_x(-90.0_f32.to_radians())),
                     )
                     .component(Component::light(
                         "MainLight",

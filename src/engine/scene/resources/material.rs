@@ -6,7 +6,7 @@ use crate::engine::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MaterialHandle(pub u32);
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Material {
     pub shader: ShaderId,
     pub diffuse_texture: Option<TextureHandle>,

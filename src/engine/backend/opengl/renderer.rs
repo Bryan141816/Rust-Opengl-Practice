@@ -164,7 +164,7 @@ impl OpenGLRendererBackend {
             let material = assets.get_material(material_handle).unwrap();
             let shader = self.shaders.get(&material.shader).unwrap();
             let mesh = self.meshes.get(&object.mesh).unwrap();
-
+            
             unsafe {
                 shader.bind(&self.gl);
                 shader.set_mat4(&self.gl, "model", &object.model);
@@ -178,12 +178,22 @@ impl OpenGLRendererBackend {
                 shader.set_vec3(&self.gl, "materialDiffuse", material.diffuse);
                 shader.set_vec3(&self.gl, "materialSpecular", material.specular);
                 shader.set_float(&self.gl, "materialShininess", material.shininess);
+                match material.diffuse_texture {
+                    Some(texture_handle) => {
+                        shader.set_int(&self.gl, "hasTexture", 1);
 
-                if let Some(texture) = material.diffuse_texture {
-                    shader.set_int(&self.gl, "hasTexture", 1);
-                    let texture = self.textures.get(&texture).expect("Texture not Found");
-                    texture.bind(&self.gl, 0);
-                } 
+                        let texture = self
+                            .textures
+                            .get(&texture_handle)
+                            .expect("Texture not Found");
+
+                        texture.bind(&self.gl, 0);
+                    }
+
+                    None => {
+                        shader.set_int(&self.gl, "hasTexture", 0);
+                    }
+                }
                 mesh.draw(&self.gl);
             }
 
