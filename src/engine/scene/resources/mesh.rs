@@ -1,7 +1,5 @@
 use glam::{Vec2, Vec3};
 
-use crate::engine::shape::Shape;
-
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct Vertex {

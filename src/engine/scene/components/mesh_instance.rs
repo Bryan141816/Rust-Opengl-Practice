@@ -1,8 +1,8 @@
 use crate::engine::scene::resources::{MeshHandle, MaterialHandle};
-
+#[derive(Debug)]
 pub struct MeshInstance { 
-    mesh: MeshHandle,
-    material: MaterialHandle
+    pub mesh: MeshHandle,
+    pub material: MaterialHandle
 }
 
 impl MeshInstance {

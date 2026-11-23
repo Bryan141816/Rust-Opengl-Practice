@@ -4,6 +4,7 @@ mod node;
 mod component;
 pub mod components;
 pub mod resources;
+pub mod traversal;
 
 pub use scene::*;
 pub use transform::*;

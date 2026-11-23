@@ -1,7 +1,7 @@
 use glam::{Vec3, Vec2};
 
 use crate::engine::scene::resources::{Mesh, Vertex};
-pub enum Shape {
+pub enum Primitive {
     Cube {
         size: f32,
     },
@@ -11,10 +11,10 @@ pub enum Shape {
         stacks: u32,
     }
 }
-impl Shape {
+impl Primitive {
     pub fn generate(&self) -> Mesh {
         match &self {
-            Shape::Cube { size } => {
+            Primitive::Cube { size } => {
                 let mut vertices = Vec::new();
                 let mut indices = Vec::new();
 
@@ -106,7 +106,7 @@ impl Shape {
 
                 Mesh::new(vertices, indices)
             },
-            Shape::Sphere { radius, sectors, stacks } => {
+            Primitive::Sphere { radius, sectors, stacks } => {
                 let mut vertices = Vec::new();
                 let mut indices = Vec::new();
 

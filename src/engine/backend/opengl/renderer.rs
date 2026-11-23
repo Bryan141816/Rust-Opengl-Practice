@@ -1,12 +1,18 @@
 use std::collections::HashMap;
 
+use glfw::Key::O;
 use glow::HasContext;
 use super::light_uniforms::LightUniforms;
+use crate::engine::asset::AssetManager;
 use crate::engine::backend::renderer::Renderer;
+use crate::engine::scene::resources::MaterialHandle;
+use crate::engine::scene::{Component, Transform};
+use crate::engine::scene::traversal::SceneTraversal;
 use crate::engine::{
-    scene::resources::{Mesh, MeshHandle}, scene::Scene, shader::{ShaderId, ShaderSource}, texture::{Texture, TextureHandle}
+    scene::resources::{Mesh, MeshHandle, Material}, scene::Scene, shader::{ShaderId, ShaderSource}, texture::{Texture, TextureHandle}
 };
-
+use crate::engine::scene::components::Camera;
+use crate::engine::scene::components::Light;
 
 use super::{
     mesh::OpenGLMesh,
@@ -14,16 +20,45 @@ use super::{
     texture::OpenGLTexture,
 };
 use glam::camera::{rh::proj::opengl};
+
+use glam::{Mat4, Vec3};
+
+struct PreparedMesh {
+    mesh: MeshHandle,
+    material: MaterialHandle,
+    model: Mat4,
+}
+
+struct PreparedCamera {
+    pub view: Mat4,
+    pub position: Vec3,
+    pub projection: Mat4,
+}
+#[derive(Debug, Clone)]
+pub(crate) struct PreparedLight {
+    pub(crate) light: Light,
+    pub(crate) world_transform: Mat4,
+}
+#[derive(Default)]
+struct RenderData {
+    meshes: Vec<PreparedMesh>,
+    camera: Option<PreparedCamera>,
+    lights: Vec<PreparedLight>,
+}
+impl RenderData {
+    pub fn clear(&mut self) {
+        self.meshes.clear();
+        self.camera = None;
+        self.lights.clear();
+    }
+}
 pub struct OpenGLRendererBackend {
     gl: glow::Context,
 
     shaders: HashMap<ShaderId, OpenGLShader>,
     meshes: HashMap<MeshHandle, OpenGLMesh>,
     textures: HashMap<TextureHandle, OpenGLTexture>,
-
-    next_mesh_id: u32,
-    next_texture_id: u32,
-    next_shader_id: u32,
+    render_data: RenderData,
 }
 impl OpenGLRendererBackend {
     pub unsafe fn new(gl: glow::Context) -> Self {
@@ -37,56 +72,91 @@ impl OpenGLRendererBackend {
             shaders: HashMap::new(),
             meshes: HashMap::new(),
             textures: HashMap::new(),
-
-            next_mesh_id: 0,
-            next_texture_id: 0,
-            next_shader_id: 0,
+            render_data: RenderData::default()
         }
     }
+
     pub unsafe fn _upload_shader(
         &mut self,
+        id: ShaderId,
         source: &ShaderSource,
-    ) -> ShaderId {
+    )  {
         unsafe {
             let shader = OpenGLShader::new(&self.gl, source).expect("Failed to load shader");
-            let handle = ShaderId::new(self.next_shader_id);
-            self.next_shader_id += 1;
-            self.shaders.insert(handle, shader);
-            handle
-
+            self.shaders.insert(id, shader);
         }
     }
     pub unsafe fn _upload_mesh(
         &mut self,
+        handle: MeshHandle,
         mesh: &Mesh,
-    ) -> MeshHandle {
+    ) {
         unsafe {
             let gpu_mesh = OpenGLMesh::new(&self.gl, mesh).expect("Failed to generate mesh");
-
-            let handle = MeshHandle::new(self.next_mesh_id);
-
-            self.next_mesh_id += 1;
-
             self.meshes.insert(handle, gpu_mesh);
 
-            handle
         }
     }
     pub unsafe fn _upload_texture(
         &mut self,
+        handle: TextureHandle,
         texture: &Texture,
-    ) -> TextureHandle {
+    ) {
         unsafe {
             let gpu_texture = OpenGLTexture::new(&self.gl, texture);
-
-            let handle = TextureHandle::new(self.next_texture_id);
-
-            self.next_texture_id += 1;
-
             self.textures.insert(handle, gpu_texture);
-
-            handle
         }
+    }
+
+    fn prepare(&mut self, scene: &Scene, assets: &AssetManager) {
+    
+        SceneTraversal::traverse(
+            &scene.root,
+            &mut |node, world_transform, _depth| {
+                for component in &node.components {
+                    match component {
+                        Component::Mesh { name, instance } => {
+                            let mesh_handle = instance.mesh;
+                            let material_handle = instance.material;
+                            
+                            let prepaired_mesh = PreparedMesh{
+                                mesh: mesh_handle,
+                                material: material_handle,
+                                model: world_transform,
+                            };
+                            self.render_data.meshes.push(prepaired_mesh);
+                        }
+
+                        Component::Light { name, light } => {
+                            let prepaired_light = PreparedLight{
+                                light: light.clone(),
+                                world_transform
+                            };
+                            self.render_data.lights.push(prepaired_light);
+                        }
+
+                        Component::Camera { name, camera } => {
+                            if name == &scene.active_camera {
+                                let position = world_transform.transform_point3(Vec3::ZERO);
+
+                                let prepared_camera = PreparedCamera {
+                                    view: world_transform.inverse(),
+                                    projection: opengl::perspective(
+                                        camera.fov,
+                                        camera.aspect_ratio,
+                                        camera.near_plane,
+                                        camera.far_plane,
+                                    ),
+                                    position,
+                                };
+
+                                self.render_data.camera = Some(prepared_camera);
+                            }
+                        }
+                                            }
+                }
+            },
+        );
     }
 
     unsafe fn _begin_frame(&self) {
@@ -99,48 +169,40 @@ impl OpenGLRendererBackend {
         }
     }
 
-    unsafe fn _render(&mut self, scene: &Scene) {
-        // let camera = &scene.camera;
-        // let projection = opengl::perspective(
-        //     camera.fov,
-        //     camera.aspect_ratio,
-        //     camera.near_plane,
-        //     camera.far_plane,
-        // );
-        // let view = camera.view_matrix();
-        // for object in &scene.objects {
-        //     let shader = self.shaders
-        //         .get(&object.material.shader)
-        //         .expect("Shader not found");
+    unsafe fn _render(&mut self, scene: &Scene, assets: &AssetManager) {
+        self.prepare(&scene, &assets);
+        let camera = self.render_data.camera.as_ref().unwrap();
 
-        //     let mesh = self.meshes
-        //         .get(&object.mesh)
-        //         .expect("Mesh not found");
+        for object in self.render_data.meshes.iter() {
+            let material_handle = object.material;
+            let material = assets.get_material(material_handle).unwrap();
+            let shader = self.shaders.get(&material.shader).unwrap();
+            let mesh = self.meshes.get(&object.mesh).unwrap();
 
+            unsafe {
+                shader.bind(&self.gl);
+                shader.set_mat4(&self.gl, "model", &object.model);
+                shader.set_mat4(&self.gl, "view", &camera.view);
+                shader.set_mat4(&self.gl, "projection", &camera.projection);
+                shader.set_vec3(&self.gl, "viewPos", camera.position);
 
-        //     unsafe {
-        //         shader.bind(&self.gl);
-                
-        //         shader.set_mat4(&self.gl, "model", &object.transform);
-        //         shader.set_mat4(&self.gl, "view", &view);
-        //         shader.set_mat4(&self.gl, "projection", &projection);
-        //         shader.set_vec3(&self.gl, "viewPos", camera.position);
+                LightUniforms::upload(&self.gl, shader, &self.render_data.lights);
 
-        //         LightUniforms::upload(&self.gl, shader, &scene.lights.lights);
+                shader.set_vec3(&self.gl, "materialAmbient", material.ambient);
+                shader.set_vec3(&self.gl, "materialDiffuse", material.diffuse);
+                shader.set_vec3(&self.gl, "materialSpecular", material.specular);
+                shader.set_float(&self.gl, "materialShininess", material.shininess);
 
-        //         shader.set_vec3(&self.gl, "materialAmbient", object.material.ambient);
-        //         shader.set_vec3(&self.gl, "materialDiffuse", object.material.diffuse);
-        //         shader.set_vec3(&self.gl, "materialSpecular", object.material.specular);
-        //         shader.set_float(&self.gl, "materialShininess", object.material.shininess);
+                if let Some(texture) = material.diffuse_texture {
+                    shader.set_int(&self.gl, "hasTexture", 1);
+                    let texture = self.textures.get(&texture).expect("Texture not Found");
+                    texture.bind(&self.gl, 0);
+                } 
+                mesh.draw(&self.gl);
+            }
 
-        //         if let Some(texture) = object.material.diffuse_texture {
-        //             shader.set_int(&self.gl, "hasTexture", 1);
-        //             let texture = self.textures.get(&texture).expect("Texture not Found");
-        //             texture.bind(&self.gl, 0);
-        //         } 
-        //         mesh.draw(&self.gl);
-        //     }
-        // }
+        }
+
     }
 
     pub fn end_frame(&self) {
@@ -175,9 +237,9 @@ impl Renderer for OpenGLRendererBackend {
             self._begin_frame();
         }
     }
-    fn render(&mut self, scene: &Scene) {
+    fn render(&mut self, scene: &Scene, assets: &AssetManager) {
         unsafe  {
-            self._render(scene);
+            self._render(scene, assets);
         }
     }
     fn destroy(&mut self) {
@@ -185,21 +247,21 @@ impl Renderer for OpenGLRendererBackend {
             self._destroy();
         }
     }
-    fn upload_mesh(&mut self, mesh: &Mesh) -> MeshHandle {
+    fn upload_mesh(&mut self, handle: MeshHandle, mesh: &Mesh) {
         unsafe {
-            self._upload_mesh(mesh)
+            self._upload_mesh(handle, mesh);
         }
     }
 
-    fn upload_texture(&mut self, texture: &Texture) -> TextureHandle {
+    fn upload_texture(&mut self, handle: TextureHandle, texture: &Texture){
         unsafe {
-            self._upload_texture(texture)
+            self._upload_texture(handle,texture);
         }
     }
 
-    fn upload_shader(&mut self,  source: &ShaderSource) -> ShaderId{
+    fn upload_shader(&mut self,  id: ShaderId, source: &ShaderSource){
         unsafe {
-            self._upload_shader(source)
+            self._upload_shader(id, source);
         }
     }
 }

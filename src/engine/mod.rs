@@ -1,5 +1,5 @@
 pub mod texture;
-pub mod shape;
+pub mod primitive;
 pub mod shader;
 pub mod window;
 pub mod backend;

@@ -1,19 +1,18 @@
 use crate::engine::scene::Node;
-
+#[derive(Debug)]
 pub struct Scene {
-    root: Node
+    pub root: Node,
+    pub active_camera: String
 }
-impl Default for Scene {
-    fn default() -> Self {
+
+impl Scene {
+    pub fn new(active_camera: impl Into<String>) -> Self {
         Self {
-            root: Node::new("Root".into()),
+            root: Node::new("Root"),
+            active_camera: active_camera.into()
         }   
     }
-}
-impl Scene {
-    pub fn children<I>(&mut self, children: I)
-    where I: IntoIterator<Item = Node>,
-    {
-        self.root.children(children);
+    fn set_active_camera(&mut self, active_camera: String) {
+        self.active_camera = active_camera;
     }
 }

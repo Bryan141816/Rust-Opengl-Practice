@@ -1,94 +1,70 @@
+
 mod engine;
 mod application;
 
-// use glam::{Mat4, Vec3};
+use glam::{Quat, Vec3};
 
-// use crate::engine::engine::Engine;
-// use crate::engine::config::EngineConfig;
-// use crate::engine::camera::Camera;
-// use crate::engine::input::MouseCursor;
-// use crate::engine::shape::Shape;
-// use crate::engine::texture::Texture;
-// use crate::engine::shader::{ShaderId, ShaderSource};
-// use crate::engine::lighting::{Light, DirectionalLight, PointLight, Material};
-// use crate::engine::scene::Scene;
-// use crate::engine::object::RenderObject;
-// use crate::application::MyApp;
+use crate::engine::{Engine, EngineConfig, primitive::Primitive, scene::{Component, Node, Scene, components::{Light, MeshInstance}, traversal::SceneTraversal}};
+use crate::engine::scene::resources::Material;
+use crate::engine::scene::components::Camera;
+
+use crate::engine::scene::Transform;
+use crate::application::MyApp;
 
 fn main() {
-    // let mut engine_config = EngineConfig::default();
+    let engine_config = EngineConfig::default();
+    let mut engine = Engine::new(&engine_config);
 
-    // engine_config.window.title = "Hello world".into();
-    // engine_config.window.cursor_mode = MouseCursor::Disabled;
+    let cube = engine.create_mesh(Primitive::Cube { size: 0.5 });
+    let shader = engine.load_shader(    "shaders/basic.vert","shaders/basic.frag",);
+    let material = engine.load_material(Material::new(shader));
 
-    // let mut engine = Engine::new(engine_config);
-    
-    // let sphere_mesh = Shape::Sphere {
-    //     radius: 1.0,
-    //     sectors: 36,
-    //     stacks: 18,
-    // }.generate();
+    let mut scene = Scene::new("Camera");
+    scene.root.children([
+        Node::new("Cube")
+            .transform(
+                Transform::new()
+                    .position(Vec3::new(0.0, 0.0, 0.0))
+            )
+            .components([
+                Component::mesh(
+                    "Cube",
+                    MeshInstance::new(cube, material)
+                ),
+            ]),
 
-    // let cube_mesh = Shape::Cube { size: 0.5 }.generate();
+        Node::new("MainLight")
+            .transform(
+                Transform::new()
+                    .position(Vec3::new(3.0, 5.0, 3.0))
+                    .rotation(Quat::from_rotation_x(-10.0_f32.to_radians()))
+            )
+            .components([
+                Component::light(
+                    "MainLight",
+                    Light::directional(Vec3::ONE, 0.5)
+                ),
+            ]),
 
-    // let sphere_handle = engine.create_mesh(&sphere_mesh);
-    // let cube_handle = engine.create_mesh(&cube_mesh);
+       Node::new("Camera")
+            .transform(
+                Transform::new()
+                    .position(Vec3::new(0.0, 1.0, 2.0))
+                    .rotation(
+                        Quat::from_rotation_x(-14.0_f32.to_radians())
+                    )
+            )
+            .components([
+                Component::camera(
+                    "Camera",
+                    Camera::new(
+                        engine_config.window.width as f32
+                            / engine_config.window.height as f32
+                    )
+                ),
+            ]),
+    ]);
 
-    // let texture_data = Texture::load("assets/textures/crate.jpg").unwrap();
-    // let texture_handle = engine.create_texture(&texture_data);
 
-    // let shader_source = ShaderSource::load(
-    //     "shaders/basic.vert",
-    //     "shaders/basic.frag",
-    // ).expect("Failed to load shader");
-
-    // engine.load_shader(ShaderId::new("basic"), &shader_source);
-
-    // let mut scene = Scene::new(
-    //     Camera::new(
-    //         Vec3::new(0.0, 0.0, 3.0),
-    //         800.0 / 600.0,
-    //     ),
-    // );
-
-    // scene.lights.add(Light::Directional(DirectionalLight {
-    //     direction: Vec3::new(-0.2, -1.0, -0.3),
-    //     color: Vec3::ONE,
-    //     intensity: 1.0,
-    // }));
-
-    // scene.lights.add(Light::Point(PointLight {
-    //     position: Vec3::new(2.0, 2.0, 2.0),
-    //     color: Vec3::new(1.0, 0.0, 0.0),
-    //     intensity: 2.0,
-    //     constant: 1.0,
-    //     linear: 0.09,
-    //     quadratic: 0.032,
-    // }));
-
-    // scene.lights.add(Light::Point(PointLight {
-    //     position: Vec3::new(-2.0, 1.0, 0.0),
-    //     color: Vec3::new(0.0, 0.0, 1.0),
-    //     intensity: 2.0,
-    //     constant: 1.0,
-    //     linear: 0.09,
-    //     quadratic: 0.032,
-    // }));
-
-    // let mut material = Material::new(ShaderId::new("basic"));
-    // material.set_diffuse_texture(texture_handle);
-
-    // scene.add_object(RenderObject {
-    //     mesh: sphere_handle,
-    //     material: material.clone(),
-    //     transform: Mat4::IDENTITY,
-    // });
-
-    // scene.add_object(RenderObject {
-    //     mesh: cube_handle,
-    //     material,
-    //     transform: Mat4::from_translation(Vec3::new(2.0, 0.0, 5.0)),
-    // });
-
-    // engine.run(MyApp,scene);
+    engine.run(MyApp, scene);
 }

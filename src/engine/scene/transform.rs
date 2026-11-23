@@ -18,6 +18,25 @@ impl Default for Transform {
 }
 
 impl Transform {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn position(mut self, position: Vec3) -> Self {
+        self.position = position;
+        self
+    }
+
+    pub fn rotation(mut self, rotation: Quat) -> Self {
+        self.rotation = rotation;
+        self
+    }
+
+    pub fn scale(mut self, scale: Vec3) -> Self {
+        self.scale = scale;
+        self
+    }
+
     pub fn to_matrix(&self) -> Mat4 {
         Mat4::from_scale_rotation_translation(
             self.scale,

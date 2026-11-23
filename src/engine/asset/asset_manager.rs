@@ -18,20 +18,27 @@ impl AssetManager {
     }
 }
 impl AssetManager {
-    pub fn add_mesh(&mut self, mesh: Mesh) -> MeshHandle {
-        MeshHandle(self.meshes.insert(mesh))
+    pub fn add_mesh(&mut self, mesh: Mesh) -> (MeshHandle, &Mesh) {
+        let handle = MeshHandle(self.meshes.insert(mesh));
+        let mesh_ref = self.meshes.get(handle.0).unwrap();
+
+        (handle, mesh_ref)
     }
 
     pub fn add_material(&mut self, material: Material) -> MaterialHandle {
         MaterialHandle(self.materials.insert(material))
     }
 
-    pub fn add_texture(&mut self, texture: Texture) -> TextureHandle {
-        TextureHandle(self.textures.insert(texture))
+    pub fn add_texture(&mut self, texture: Texture) -> (TextureHandle, &Texture) {
+        let handle = TextureHandle(self.textures.insert(texture));
+        let texture_ref = self.textures.get(handle.0).unwrap();
+        (handle, texture_ref)
     }
 
-    pub fn add_shader(&mut self, shader: ShaderSource) -> ShaderId {
-        ShaderId(self.shaders.insert(shader))
+    pub fn add_shader(&mut self, shader: ShaderSource) -> (ShaderId, &ShaderSource) {
+        let id = ShaderId(self.shaders.insert(shader));
+        let shader_ref = self.shaders.get(id.0).unwrap();
+        (id, shader_ref)
     }
 }
 impl AssetManager {
