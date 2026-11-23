@@ -109,54 +109,40 @@ impl OpenGLRendererBackend {
     }
 
     fn prepare(&mut self, scene: &Scene, assets: &AssetManager) {
-    
-        SceneTraversal::traverse(
-            &scene.root,
-            &mut |node, world_transform, _depth| {
-                for component in &node.components {
-                    match component {
-                        Component::Mesh { name, instance } => {
-                            let mesh_handle = instance.mesh;
-                            let material_handle = instance.material;
-                            
-                            let prepaired_mesh = PreparedMesh{
-                                mesh: mesh_handle,
-                                material: material_handle,
-                                model: world_transform,
-                            };
-                            self.render_data.meshes.push(prepaired_mesh);
-                        }
+        self.render_data.clear();
 
-                        Component::Light { name, light } => {
-                            let prepaired_light = PreparedLight{
-                                light: light.clone(),
-                                world_transform
-                            };
-                            self.render_data.lights.push(prepaired_light);
-                        }
+        let root_id = scene.find_node("Root")
+            .expect("Scene root not found")
+            .id;
 
-                        Component::Camera { name, camera } => {
-                            if name == &scene.active_camera {
-                                let position = world_transform.transform_point3(Vec3::ZERO);
+        SceneTraversal::traverse(scene, root_id, &mut |node, world_transform, _depth| {
+            for component in &node.components {
+                match component {
+                    Component::Mesh { instance, .. } => {
+                        self.render_data.meshes.push(PreparedMesh {
+                            mesh: instance.mesh,
+                            material: instance.material,
+                            model: world_transform,
+                        });
+                    }
 
-                                let prepared_camera = PreparedCamera {
-                                    view: world_transform.inverse(),
-                                    projection: opengl::perspective(
-                                        camera.fov,
-                                        camera.aspect_ratio,
-                                        camera.near_plane,
-                                        camera.far_plane,
-                                    ),
-                                    position,
-                                };
+                    Component::Camera { camera, .. } => {
+                        self.render_data.camera = Some(PreparedCamera {
+                            view: camera.view_matrix(world_transform),
+                            position: world_transform.transform_point3(Vec3::ZERO),
+                            projection: camera.projection_matrix(),
+                        });
+                    }
 
-                                self.render_data.camera = Some(prepared_camera);
-                            }
-                        }
-                                            }
+                    Component::Light { light, .. } => {
+                        self.render_data.lights.push(PreparedLight {
+                            light: light.clone(),
+                            world_transform,
+                        });
+                    }
                 }
-            },
-        );
+            }
+        });
     }
 
     unsafe fn _begin_frame(&self) {

@@ -1,3 +1,5 @@
+use glam::Mat4;
+use glam::camera::{rh::proj::opengl};
 #[derive(Debug)]
 pub struct Camera {
     pub fov: f32,
@@ -20,5 +22,16 @@ impl Camera {
         if height != 0 {
             self.aspect_ratio = width as f32 / height as f32;
         }
+    }
+    pub fn view_matrix(&self, world_transform: Mat4) -> Mat4 {
+        world_transform.inverse()
+    }
+    pub fn projection_matrix(&self) -> Mat4 {
+        opengl::perspective(
+            self.fov,
+            self.aspect_ratio,
+            self.near_plane,
+            self.far_plane,
+        )
     }
 }

@@ -15,7 +15,7 @@ use super::time::Time;
 use super::application::Application;
 use crate::engine::primitive::Primitive;
 pub struct Engine {
-    window: Box<dyn Window>,
+    pub window: Box<dyn Window>,
     renderer: Box<dyn Renderer>,
     time: Time,
     assets: AssetManager

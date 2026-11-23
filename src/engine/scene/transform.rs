@@ -36,6 +36,9 @@ impl Transform {
         self.scale = scale;
         self
     }
+    pub fn direction(&self) -> Vec3 {
+        (self.rotation * Vec3::NEG_Z).normalize()
+    }
 
     pub fn to_matrix(&self) -> Mat4 {
         Mat4::from_scale_rotation_translation(
