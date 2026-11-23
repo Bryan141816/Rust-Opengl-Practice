@@ -133,7 +133,7 @@ impl OpenGLRendererBackend {
 
                     Component::Light { light, .. } => {
                         self.render_data.lights.push(PreparedLight {
-                            light: light.clone(),
+                            light: *light,
                             world_transform,
                         });
                     }

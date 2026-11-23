@@ -1,12 +1,12 @@
 use glam::Vec3;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct DirectionalLight {
     pub color: Vec3,
     pub intensity: f32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct PointLight {
     pub color: Vec3,
     pub intensity: f32,
@@ -15,7 +15,7 @@ pub struct PointLight {
     pub quadratic: f32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct SpotLight {
     pub color: Vec3,
     pub intensity: f32,
@@ -23,7 +23,7 @@ pub struct SpotLight {
     pub outer_cut_off: f32,
 }
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Light {
     Directional(DirectionalLight),
     Point(PointLight),
