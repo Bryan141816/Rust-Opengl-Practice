@@ -1,4 +1,4 @@
-use crate::engine::scene::{Transform, component, transform};
+use crate::engine::scene::Transform ;
 use super::component::Component;
 use super::scene::Scene;
 use super::NodeId;
@@ -8,6 +8,7 @@ pub (crate) struct  NodeBuilder<'a> {
     pub(crate) scene: &'a mut Scene,
     pub(crate)  current_id: NodeId,
 } 
+#[allow(dead_code)]
 impl<'a> NodeBuilder<'a> {
     pub fn child<F>(
         &mut self,

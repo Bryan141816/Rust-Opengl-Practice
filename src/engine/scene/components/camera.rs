@@ -7,7 +7,7 @@ pub struct Camera {
     pub near_plane: f32,
     pub far_plane: f32,
 }
-
+#[allow(dead_code)]
 impl Camera {
     pub fn new(aspect_ratio: f32) -> Self {
         Self {

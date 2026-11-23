@@ -1,6 +1,7 @@
 use crate::engine::scene::components::{Camera, Light, MeshInstance};
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum Component {
     Mesh {
         name: String,

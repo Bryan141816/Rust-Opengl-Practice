@@ -1,6 +1,7 @@
 use crate::engine::window::WindowConfig;
 
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 pub enum GraphicsBackend {
     OpenGL,
     Vulkan,

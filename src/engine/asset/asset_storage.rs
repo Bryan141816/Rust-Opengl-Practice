@@ -5,7 +5,7 @@ pub struct AssetStorage<T, H> {
     next_id: u32,
     _marker: std::marker::PhantomData<H>,
 }
-
+#[allow(dead_code)]
 impl<T, H> AssetStorage<T, H> {
     pub fn new() -> Self {
         Self {

@@ -1,6 +1,6 @@
 use crate::engine::{asset::AssetStorage, scene::resources::{Mesh, MeshHandle, Material, MaterialHandle}};
 use crate::engine::{texture::Texture,texture::TextureHandle, shader::ShaderId, shader::ShaderSource};
-
+#[allow(dead_code)]
 pub struct AssetManager {
     meshes: AssetStorage<Mesh, MeshHandle>,
     materials: AssetStorage<Material, MaterialHandle>,
@@ -41,6 +41,7 @@ impl AssetManager {
         (id, shader_ref)
     }
 }
+#[allow(dead_code)]
 impl AssetManager {
     pub fn get_mesh(&self, handle: MeshHandle) -> Option<&Mesh> {
         self.meshes.get(handle.0)

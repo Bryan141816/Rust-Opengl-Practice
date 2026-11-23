@@ -1,11 +1,6 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TextureHandle(pub u32);
 
-impl TextureHandle {
-    pub fn new(id: u32) -> Self {
-        Self(id)
-    }
-}
 
 pub struct Texture {
     pub width: u32,

@@ -1,5 +1,5 @@
 
-use crate::engine::scene::{Node, NodeId, Transform, scene_builder::SceneBuilder, transform};
+use crate::engine::scene::{Node, NodeId, Transform, scene_builder::SceneBuilder};
 use indexmap::IndexMap;
 use super::component::Component;
 #[derive(Debug)]
@@ -27,16 +27,8 @@ impl Scene {
         let id = self.next_id;
         self.next_id += 1;
 
-        let node = Node {
-            id,
-            name: name.into(),
-            parent,
-            transform: Transform::new(),
-            components: Vec::new(),
-            children: Vec::new(),
-        };
+        let node = Node::new(id, name, parent);
         self.nodes.insert(id, node);
-        // Register this node in its parent's children
         if let Some(parent_id) = parent {
             if let Some(parent_node) = self.nodes.get_mut(&parent_id) {
                 parent_node.children.push(id);
@@ -60,6 +52,7 @@ impl Scene {
     }
 }
 //Get Node Impl
+#[allow(dead_code)]
 impl Scene {
     pub fn get_node(&self, id: NodeId) -> Option<&Node> {
         self.nodes.get(&id)
@@ -70,6 +63,7 @@ impl Scene {
     }
 }
 //Find Node Impl
+#[allow(dead_code)]
 impl Scene {
     pub fn find_node(&self, name: &str) -> Option<&Node> {
         self.nodes.values().find(|node| node.name == name)
@@ -80,6 +74,7 @@ impl Scene {
     }
 }
 //Get Children
+#[allow(dead_code)]
 impl Scene {
     pub fn get_children(&self, parent_id: NodeId) -> Vec<&Node> {
         self.nodes

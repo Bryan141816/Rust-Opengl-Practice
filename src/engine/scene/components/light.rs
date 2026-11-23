@@ -22,14 +22,14 @@ pub struct SpotLight {
     pub cut_off: f32,
     pub outer_cut_off: f32,
 }
-
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum Light {
     Directional(DirectionalLight),
     Point(PointLight),
     Spot(SpotLight),
 }
-
+#[allow(dead_code)]
 impl Light {
     pub fn directional(color: Vec3, intensity: f32) -> Self {
         Self::Directional(DirectionalLight {

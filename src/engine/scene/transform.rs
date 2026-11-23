@@ -16,7 +16,7 @@ impl Default for Transform {
         }
     }
 }
-
+#[allow(dead_code)]
 impl Transform {
     pub fn new() -> Self {
         Self::default()

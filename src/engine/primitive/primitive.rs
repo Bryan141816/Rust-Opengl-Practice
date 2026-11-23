@@ -1,6 +1,7 @@
 use glam::{Vec3, Vec2};
-
 use crate::engine::scene::resources::{Mesh, Vertex};
+
+#[allow(dead_code)]
 pub enum Primitive {
     Cube {
         size: f32,

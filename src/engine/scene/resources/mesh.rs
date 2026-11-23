@@ -11,11 +11,6 @@ pub struct Vertex {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MeshHandle(pub u32);
 
-impl MeshHandle {
-    pub fn new(id: u32) -> Self {
-        Self(id)
-    }
-}
 #[derive(Debug, Clone)]
 pub struct Mesh {
     pub vertices: Vec<Vertex>,
