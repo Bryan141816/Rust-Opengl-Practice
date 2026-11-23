@@ -1,7 +1,6 @@
 mod window;
 mod glfw_window;
-mod input;
-
+mod config;
 pub use window::*;
 pub use glfw_window::*;
-pub use input::*;
+pub use config::WindowConfig;

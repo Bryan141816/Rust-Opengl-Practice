@@ -9,19 +9,29 @@ use glfw::{
     WindowMode,
     WindowEvent,
     Key as GlfwKey,
-    Action
+    Action,
+    MouseButton as GlfwMouseButton,
+    CursorMode,
 };
-use super::input::Key as EngineKey;
+use crate::engine::{input::{
+    Key as EngineKey, MouseButton, MouseCursor, MouseDelta, MousePosition,
+}, window::WindowConfig};
+use std::ffi::{CStr, c_void};
 use super::window::Window;
-
+#[allow(dead_code)]
 pub struct GlfwWindow {
     glfw: Glfw,
     window: PWindow,
     events: GlfwReceiver<(f64, WindowEvent)>,
-}
 
+    mouse_position: MousePosition,
+    mouse_delta: MouseDelta,
+    last_mouse_position: MousePosition,
+    first_mouse: bool,
+}
+#[allow(dead_code)]
 impl GlfwWindow {
-    pub fn new(width: u32, height: u32, title: &str) -> Self {
+pub fn new(config: &WindowConfig) -> Self {
         let mut glfw = glfw::init(fail_on_errors!())
             .expect("Failed to initialize GLFW");
 
@@ -32,9 +42,9 @@ impl GlfwWindow {
 
         let (mut window, events) = glfw
             .create_window(
-                width,
-                height,
-                title,
+                config.width,
+                config.height,
+                &config.title,
                 WindowMode::Windowed,
             )
             .expect("Failed to create GLFW window");
@@ -43,15 +53,34 @@ impl GlfwWindow {
 
         window.set_key_polling(true);
         window.set_cursor_pos_polling(true);
-        window.set_cursor_mode(glfw::CursorMode::Disabled);
+        window.set_mouse_button_polling(true);
+        window.set_resizable(config.resizable);
+
+            match config.cursor_mode {
+                MouseCursor::Normal => window.set_cursor_mode(glfw::CursorMode::Normal),
+                MouseCursor::Hidden => window.set_cursor_mode(glfw::CursorMode::Hidden),
+                MouseCursor::Disabled => window.set_cursor_mode(glfw::CursorMode::Disabled),
+            }
+
+        let (x, y) = window.get_cursor_pos();
+
+        glfw.set_swap_interval(if config.vsync {
+            glfw::SwapInterval::Sync(1)
+        } else {
+            glfw::SwapInterval::None
+        });
 
         Self {
             glfw,
             window,
             events,
+
+            mouse_position: MousePosition { x, y },
+            mouse_delta: MouseDelta { x: 0.0, y: 0.0 },
+            last_mouse_position: MousePosition { x, y },
+            first_mouse: true,
         }
     }
-
     pub fn raw(&self) -> &PWindow {
         &self.window
     }
@@ -67,6 +96,14 @@ impl GlfwWindow {
     pub fn events(&self) -> &GlfwReceiver<(f64, WindowEvent)> {
         &self.events
     }
+    pub fn get_proc_address(&self, name: &CStr) -> *const c_void {
+        self.glfw
+            .get_proc_address_raw(name.to_str().unwrap())
+            .map_or(std::ptr::null(), |f| {
+                f as *const () as *const c_void
+        })
+    }
+
 }
 fn map_key(key: EngineKey) -> GlfwKey {
     match key {
@@ -199,7 +236,26 @@ fn map_key(key: EngineKey) -> GlfwKey {
         EngineKey::Menu => GlfwKey::Menu,
     }
 }
+fn map_mouse_button(button: MouseButton) -> GlfwMouseButton {
+    match button {
+        MouseButton::Left => GlfwMouseButton::Button1,
+        MouseButton::Right => GlfwMouseButton::Button2,
+        MouseButton::Middle => GlfwMouseButton::Button3,
+        MouseButton::Button4 => GlfwMouseButton::Button4,
+        MouseButton::Button5 => GlfwMouseButton::Button5,
+        MouseButton::Button6 => GlfwMouseButton::Button6,
+        MouseButton::Button7 => GlfwMouseButton::Button7,
+        MouseButton::Button8 => GlfwMouseButton::Button8,
+    }
+}
 
+fn map_cursor_mode(mode: MouseCursor) -> CursorMode {
+    match mode {
+        MouseCursor::Normal => CursorMode::Normal,
+        MouseCursor::Hidden => CursorMode::Hidden,
+        MouseCursor::Disabled => CursorMode::Disabled,
+    }
+}
 impl Window for GlfwWindow {
     fn should_close(&self) -> bool {
         self.window.should_close()
@@ -211,7 +267,25 @@ impl Window for GlfwWindow {
 
     fn poll_events(&mut self) {
         self.glfw.poll_events();
+
+        let (x, y) = self.window.get_cursor_pos();
+
+        self.mouse_position = MousePosition { x, y };
+
+        if self.first_mouse {
+            self.last_mouse_position = self.mouse_position;
+            self.mouse_delta = MouseDelta { x: 0.0, y: 0.0 };
+            self.first_mouse = false;
+        } else {
+            self.mouse_delta = MouseDelta {
+                x: x - self.last_mouse_position.x,
+                y: self.last_mouse_position.y - y,
+            };
+
+            self.last_mouse_position = self.mouse_position;
+        }
     }
+    
 
     fn swap_buffers(&mut self) {
         self.window.swap_buffers();
@@ -225,5 +299,22 @@ impl Window for GlfwWindow {
     fn is_key_pressed(&self, key: EngineKey) -> bool {
         self.window.get_key(map_key(key)) == Action::Press
     }
-}
 
+    fn is_mouse_button_pressed(&self, button: MouseButton) -> bool {
+        self.window.get_mouse_button(map_mouse_button(button)) == Action::Press
+    }
+
+    fn mouse_position(&self) -> MousePosition {
+        self.mouse_position
+    }
+    fn mouse_delta(&self) -> MouseDelta {
+        self.mouse_delta
+    }
+
+    fn set_cursor_mode(&mut self, mode: MouseCursor) {
+        self.window.set_cursor_mode(map_cursor_mode(mode));
+
+        self.first_mouse = true;
+    }
+
+}

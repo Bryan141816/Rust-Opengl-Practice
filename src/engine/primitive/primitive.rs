@@ -1,8 +1,7 @@
 use glam::{Vec3, Vec2};
 
-use crate::engine::mesh::Mesh;
-use crate::engine::mesh::Vertex;
-pub enum Shape {
+use crate::engine::scene::resources::{Mesh, Vertex};
+pub enum Primitive {
     Cube {
         size: f32,
     },
@@ -10,12 +9,16 @@ pub enum Shape {
         radius: f32,
         sectors: u32,
         stacks: u32,
-    }
+    },
+    Plane {
+        width: f32,
+        height: f32,
+    },
 }
-impl Shape {
+impl Primitive {
     pub fn generate(&self) -> Mesh {
         match &self {
-            Shape::Cube { size } => {
+            Primitive::Cube { size } => {
                 let mut vertices = Vec::new();
                 let mut indices = Vec::new();
 
@@ -107,7 +110,7 @@ impl Shape {
 
                 Mesh::new(vertices, indices)
             },
-            Shape::Sphere { radius, sectors, stacks } => {
+            Primitive::Sphere { radius, sectors, stacks } => {
                 let mut vertices = Vec::new();
                 let mut indices = Vec::new();
 
@@ -165,6 +168,42 @@ impl Shape {
                         }
                     }
                 }
+
+                Mesh::new(vertices, indices)
+            },
+            Primitive::Plane { width, height } => {
+                let half_width = *width / 2.0;
+                let half_height = *height / 2.0;
+
+                let normal = Vec3::Y;
+
+                let vertices = vec![
+                    Vertex {
+                        position: Vec3::new(-half_width, 0.0, -half_height),
+                        normal,
+                        tex_coords: Vec2::new(0.0, 0.0),
+                    },
+                    Vertex {
+                        position: Vec3::new(-half_width, 0.0, half_height),
+                        normal,
+                        tex_coords: Vec2::new(0.0, 1.0),
+                    },
+                    Vertex {
+                        position: Vec3::new(half_width, 0.0, half_height),
+                        normal,
+                        tex_coords: Vec2::new(1.0, 1.0),
+                    },
+                    Vertex {
+                        position: Vec3::new(half_width, 0.0, -half_height),
+                        normal,
+                        tex_coords: Vec2::new(1.0, 0.0),
+                    },
+                ];
+
+                let indices = vec![
+                    0, 1, 2,
+                    0, 2, 3,
+                ];
 
                 Mesh::new(vertices, indices)
             }
