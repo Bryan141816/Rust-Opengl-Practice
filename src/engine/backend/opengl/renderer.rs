@@ -112,7 +112,7 @@ impl OpenGLRendererBackend {
             .expect("Scene root not found")
             .id;
 
-        SceneTraversal::traverse(scene, root_id, &mut |node, world_transform, _depth| {
+        SceneTraversal::traverse(scene, root_id, &mut |node, world_transform| {
             for component in &node.components {
                 match component {
                     Component::Mesh { instance, .. } => {
