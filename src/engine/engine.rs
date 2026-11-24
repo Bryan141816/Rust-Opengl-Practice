@@ -12,6 +12,7 @@ use super::texture::{Texture, TextureHandle};
 use super::time::Time;
 use super::application::Application;
 use crate::engine::primitive::Primitive;
+use crate::engine::asset::obj::LoadObj;
 pub struct Engine {
     pub window: Box<dyn Window>,
     renderer: Box<dyn Renderer>,
@@ -58,6 +59,12 @@ impl Engine {
 impl Engine {
     pub fn create_mesh(&mut self, primitive: Primitive) -> MeshHandle {
         let mesh = primitive.generate();
+        let (handle, mesh) = self.assets.add_mesh(mesh);
+        self.renderer.upload_mesh(handle, mesh);
+        handle
+    }
+    pub fn import_obj_model(&mut self, path: &str) -> MeshHandle {
+        let mesh = LoadObj::load_obj(path).unwrap();
         let (handle, mesh) = self.assets.add_mesh(mesh);
         self.renderer.upload_mesh(handle, mesh);
         handle

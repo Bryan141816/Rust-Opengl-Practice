@@ -16,6 +16,7 @@ fn main() {
     let mut engine = Engine::new(&engine_config);
     engine.window.set_cursor_mode(engine::input::MouseCursor::Disabled);
     
+    let mambo = engine.import_obj_model("assets/models/chibi-mambo-3d-model/source/model/base.obj");
 
     let cube = engine.create_mesh(Primitive::Cube { size: 0.5 });
     let plane = engine.create_mesh(Primitive::Plane { width: 10.0, height: 10.0 });
@@ -38,7 +39,7 @@ fn main() {
                     )
                     .component(Component::mesh(
                         "Cube",
-                        MeshInstance::new(cube, material_handle),
+                        MeshInstance::new(mambo, material_handle),
                     ))
                     .child("Camera", |camera|{
 
