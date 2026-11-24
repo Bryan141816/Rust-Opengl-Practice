@@ -1,9 +1,6 @@
-use glfw::Key::P;
 
 use crate::engine::scene::Scene;
 use crate::engine::scene::node_builder::NodeBuilder;
-use crate::engine::scene::{Node, NodeId, NodeName, Transform};
-use super::component::Component;
 pub (crate) struct SceneBuilder {
     pub(crate) scene: Scene,
 }

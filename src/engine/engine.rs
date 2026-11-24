@@ -1,6 +1,4 @@
-use std::collections::HashMap;
 
-use gltf::json::extensions::{mesh, texture};
 
 use crate::engine::asset::AssetManager;
 use crate::engine::backend::factory::create_backend;
@@ -79,7 +77,7 @@ impl Engine {
         id
     }
     pub fn load_material(&mut self, material: Material) -> MaterialHandle {
-        let (handle) = self.assets.add_material(material);
+        let handle = self.assets.add_material(material);
         handle
     }
 }

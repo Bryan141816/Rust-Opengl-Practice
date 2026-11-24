@@ -12,20 +12,19 @@ impl SceneTraversal {
         callback: &mut F,
     )
     where
-        F: FnMut(&Node, Mat4, usize),
+        F: FnMut(&Node, Mat4),
     {
-        Self::traverse_node(scene, root_id, Mat4::IDENTITY, 0, callback);
+        Self::traverse_node(scene, root_id, Mat4::IDENTITY, callback);
     }
 
     fn traverse_node<F>(
         scene: &Scene,
         node_id: NodeId,
         parent_transform: Mat4,
-        depth: usize,
         callback: &mut F,
     )
     where
-        F: FnMut(&Node, Mat4, usize),
+        F: FnMut(&Node, Mat4),
     {
         let Some(node) = scene.nodes.get(&node_id) else {
             return;
@@ -33,14 +32,13 @@ impl SceneTraversal {
 
         let world_transform = parent_transform * node.transform.to_matrix();
 
-        callback(node, world_transform, depth);
+        callback(node, world_transform);
 
         for child_id in &node.children {
             Self::traverse_node(
                 scene,
                 *child_id,
                 world_transform,
-                depth + 1,
                 callback,
             );
         }

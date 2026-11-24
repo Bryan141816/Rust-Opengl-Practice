@@ -1,25 +1,22 @@
 use std::collections::HashMap;
 
-use glfw::Key::O;
 use glow::HasContext;
 use super::light_uniforms::LightUniforms;
 use crate::engine::asset::AssetManager;
 use crate::engine::backend::renderer::Renderer;
+use crate::engine::scene::components::Light;
 use crate::engine::scene::resources::MaterialHandle;
-use crate::engine::scene::{Component, Transform};
+use crate::engine::scene::Component;
 use crate::engine::scene::traversal::SceneTraversal;
 use crate::engine::{
-    scene::resources::{Mesh, MeshHandle, Material}, scene::Scene, shader::{ShaderId, ShaderSource}, texture::{Texture, TextureHandle}
+    scene::resources::{Mesh, MeshHandle}, scene::Scene, shader::{ShaderId, ShaderSource}, texture::{Texture, TextureHandle}
 };
-use crate::engine::scene::components::Camera;
-use crate::engine::scene::components::Light;
 
 use super::{
     mesh::OpenGLMesh,
     shader::OpenGLShader,
     texture::OpenGLTexture,
 };
-use glam::camera::{rh::proj::opengl};
 
 use glam::{Mat4, Vec3};
 
@@ -108,14 +105,14 @@ impl OpenGLRendererBackend {
         }
     }
 
-    fn prepare(&mut self, scene: &Scene, assets: &AssetManager) {
+    fn prepare(&mut self, scene: &Scene) {
         self.render_data.clear();
 
         let root_id = scene.find_node("Root")
             .expect("Scene root not found")
             .id;
 
-        SceneTraversal::traverse(scene, root_id, &mut |node, world_transform, _depth| {
+        SceneTraversal::traverse(scene, root_id, &mut |node, world_transform| {
             for component in &node.components {
                 match component {
                     Component::Mesh { instance, .. } => {
@@ -136,7 +133,7 @@ impl OpenGLRendererBackend {
 
                     Component::Light { light, .. } => {
                         self.render_data.lights.push(PreparedLight {
-                            light: light.clone(),
+                            light: *light,
                             world_transform,
                         });
                     }
@@ -156,7 +153,7 @@ impl OpenGLRendererBackend {
     }
 
     unsafe fn _render(&mut self, scene: &Scene, assets: &AssetManager) {
-        self.prepare(&scene, &assets);
+        self.prepare(&scene);
         let camera = self.render_data.camera.as_ref().unwrap();
 
         for object in self.render_data.meshes.iter() {

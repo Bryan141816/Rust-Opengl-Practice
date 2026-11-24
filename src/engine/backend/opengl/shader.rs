@@ -1,4 +1,3 @@
-use std::{fs,path::Path};
 
 use glam::{Mat4, Vec3};
 use glow::HasContext;
