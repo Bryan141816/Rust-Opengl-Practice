@@ -16,18 +16,17 @@ fn main() {
     let mut engine = Engine::new(&engine_config);
     engine.window.set_cursor_mode(engine::input::MouseCursor::Disabled);
     
-    let mambo = engine.import_obj_model("assets/models/chibi-mambo-3d-model/source/model/base.obj");
-
+    let loaded = engine.import_obj_model("assets/models/chibi-mambo-3d-model/source/model/base.obj");
+    println!("{:#?}", loaded);
     let cube = engine.create_mesh(Primitive::Cube { size: 0.5 });
     let plane = engine.create_mesh(Primitive::Plane { width: 10.0, height: 10.0 });
     let shader = engine.load_shader(    "shaders/basic.vert","shaders/basic.frag",);
     
     let texture = engine.load_texture("assets/textures/crate.jpg");
-    let mut material = Material::new(shader); 
-    let material2 = Material::new(shader);
+    let mut material = Material::new(); 
+    let material2 = Material::new();
     material.set_diffuse_texture(texture);
     
-    let material_handle = engine.load_material(material);
     let material_handle_2 = engine.load_material(material2);
     let scene = Scene::new("Camera")
         .node(|root| {
@@ -35,12 +34,12 @@ fn main() {
                 cube_node
                     .transform(
                         Transform::new()
-                            .position(Vec3::new(0.0, 0.0, 0.0)),
+                            .position(Vec3::new(0.0, 2.0, 0.0)),
                     )
-                    .component(Component::mesh(
-                        "Cube",
-                        MeshInstance::new(mambo, material_handle),
-                    ))
+                    // .component(Component::mesh(
+                    //     "Cube",
+                    //     MeshInstance::new(mambo, material_handle),
+                    // ))
                     .child("Camera", |camera|{
 
                         camera.component(Component::camera("Camera", 
@@ -61,19 +60,67 @@ fn main() {
                         Transform::new()
                             .position(Vec3::new(0.0, -0.5, 0.0)),
                     )
-                    .component(Component::mesh("Plane", MeshInstance::new(plane, material_handle_2)));
+                    .component(Component::mesh("Plane", MeshInstance::new(plane, material_handle_2), shader));
             });
-            root.child("MainLight", |light_node| {
-                light_node
-                    .transform(
-                        Transform::new()
-                            .position(Vec3::new(0.0, 5.0, 0.0))
-                            .rotation(Quat::from_rotation_x(-90.0_f32.to_radians())),
-                    )
-                    .component(Component::light(
-                        "MainLight",
-                        Light::directional(Vec3::ONE, 1.0),
-                    ));
+            root.child("LightingRig", |rig| {
+                let lights = [
+                    // Front
+                    (
+                        "FrontLight",
+                        Vec3::new(0.0, 0.0, 1.0),
+                        Quat::from_rotation_y(180.0_f32.to_radians()),
+                    ),
+
+                    // Back
+                    (
+                        "BackLight",
+                        Vec3::new(0.0, 0.0, -1.0),
+                        Quat::IDENTITY,
+                    ),
+
+                    // Right
+                    (
+                        "RightLight",
+                        Vec3::new(1.0, 0.0, 0.0),
+                        Quat::from_rotation_y(-90.0_f32.to_radians()),
+                    ),
+
+                    // Left
+                    (
+                        "LeftLight",
+                        Vec3::new(-1.0, 0.0, 0.0),
+                        Quat::from_rotation_y(90.0_f32.to_radians()),
+                    ),
+
+                    // Top
+                    (
+                        "TopLight",
+                        Vec3::new(0.0, 0.5, 0.0),
+                        Quat::from_rotation_x(90.0_f32.to_radians()),
+                    ),
+
+                    // Bottom
+                    (
+                        "BottomLight",
+                        Vec3::new(0.0, -1.0, 0.0),
+                        Quat::from_rotation_x(-90.0_f32.to_radians()),
+                    ),
+                ];
+
+                for (name, position, rotation) in lights {
+                    rig.child(name, |light| {
+                        light
+                            .transform(
+                                Transform::new()
+                                    .position(position * 2.0)
+                                    .rotation(rotation),
+                            )
+                            .component(Component::light(
+                                name,
+                                Light::directional(Vec3::ONE, 0.5),
+                            ));
+                    });
+                }
             });
         })
         .build();

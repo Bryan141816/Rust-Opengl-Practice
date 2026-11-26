@@ -8,7 +8,6 @@ pub struct MaterialHandle(pub u32);
 
 #[derive(Clone, Debug)]
 pub struct Material {
-    pub shader: ShaderId,
     pub diffuse_texture: Option<TextureHandle>,
     pub ambient: Vec3,
     pub diffuse: Vec3,
@@ -16,11 +15,9 @@ pub struct Material {
     pub shininess: f32,
 }
 impl Material {
-    pub fn new(shader: ShaderId) -> Self {
+    pub fn new() -> Self {
         Self {
-            shader,
             diffuse_texture: None,
-
             ambient: Vec3::splat(0.15),
             diffuse: Vec3::ONE,
             specular: Vec3::ONE,

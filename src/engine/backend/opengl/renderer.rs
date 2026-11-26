@@ -23,6 +23,7 @@ use glam::{Mat4, Vec3};
 struct PreparedMesh {
     mesh: MeshHandle,
     material: MaterialHandle,
+    shader: ShaderId,
     model: Mat4,
 }
 
@@ -89,6 +90,7 @@ impl OpenGLRendererBackend {
         mesh: &Mesh,
     ) {
         unsafe {
+            // println!("{:?}", &mesh);
             let gpu_mesh = OpenGLMesh::new(&self.gl, mesh).expect("Failed to generate mesh");
             self.meshes.insert(handle, gpu_mesh);
 
@@ -115,10 +117,11 @@ impl OpenGLRendererBackend {
         SceneTraversal::traverse(scene, root_id, &mut |node, world_transform| {
             for component in &node.components {
                 match component {
-                    Component::Mesh { instance, .. } => {
+                    Component::Mesh { instance, shader,.. } => {
                         self.render_data.meshes.push(PreparedMesh {
                             mesh: instance.mesh,
                             material: instance.material,
+                            shader: *shader,
                             model: world_transform,
                         });
                     }
@@ -159,8 +162,8 @@ impl OpenGLRendererBackend {
         for object in self.render_data.meshes.iter() {
             let material_handle = object.material;
             let material = assets.get_material(material_handle).unwrap();
-            let shader = self.shaders.get(&material.shader).unwrap();
             let mesh = self.meshes.get(&object.mesh).unwrap();
+            let shader = self.shaders.get(&object.shader).unwrap();
             
             unsafe {
                 shader.bind(&self.gl);

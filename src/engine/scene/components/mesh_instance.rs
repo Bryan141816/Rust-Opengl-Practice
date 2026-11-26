@@ -1,15 +1,15 @@
-use crate::engine::scene::resources::{MeshHandle, MaterialHandle};
+use crate::engine::{scene::resources::{MaterialHandle, MeshHandle}, shader::ShaderId};
 #[derive(Debug)]
 pub struct MeshInstance { 
     pub mesh: MeshHandle,
-    pub material: MaterialHandle
+    pub material: MaterialHandle,
 }
 
 impl MeshInstance {
     pub fn new(mesh: MeshHandle, material: MaterialHandle)->Self {
         Self {
             mesh,
-            material
+            material,
         }
     }
 }

@@ -1,4 +1,4 @@
-use crate::engine::scene::components::{Camera, Light, MeshInstance};
+use crate::engine::{scene::components::{Camera, Light, MeshInstance}, shader::ShaderId};
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -6,6 +6,7 @@ pub enum Component {
     Mesh {
         name: String,
         instance: MeshInstance,
+        shader: ShaderId,
     },
     Light {
         name: String,
@@ -18,10 +19,11 @@ pub enum Component {
 }
 
 impl Component {
-    pub fn mesh(name: impl Into<String>, instance: MeshInstance) -> Self {
+    pub fn mesh(name: impl Into<String>, instance: MeshInstance,shader: ShaderId,) -> Self {
         Self::Mesh {
             name: name.into(),
             instance,
+            shader
         }
     }
 

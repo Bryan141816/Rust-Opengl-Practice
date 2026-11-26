@@ -1,64 +1,63 @@
 use glam::{Vec2, Vec3};
 
 use crate::engine::scene::resources::{Material, Mesh, Vertex};
-
-pub enum LoadObjResults {
-    MeshOnly(Mesh),
-    WithMaterial {
-        mesh: Mesh,
-        material: Material,
-    },
+use yaop::{convert_to_mesh, parse_obj};
+use yaop::mesh::Mesh as YaopMesh;
+use yaop::parser::MtlMaterial;
+#[derive(Debug)]
+pub struct MeshMaterialBundle {
+    pub mesh: Mesh,
+    pub material: Option<MtlMaterial>,
 }
+impl MeshMaterialBundle {
+    pub fn new(mesh: Mesh, material: Option<MtlMaterial>) -> Self {
+        Self {
+            mesh: mesh,
+            material: material
+        }
+    }
+}
+#[derive(Debug)]
+pub struct LoadObjResult{
+    pub models: Vec<MeshMaterialBundle>
+}
+pub fn convert_mesh(mesh: &YaopMesh) -> Mesh {
+    let vertices: Vec<Vertex> = mesh.vertices
+        .iter()
+        .map(|vertex| Vertex {
+            position: Vec3::from_array(vertex.position),
+            normal: Vec3::from_array(vertex.normal),
+            tex_coords: Vec2::from_array(vertex.tex_coord),
+        })
+        .collect();
 
+    let indices: Vec<u32> = mesh.indices
+        .iter()
+        .map(|&index| index as u32)
+        .collect();
+
+    Mesh::new(vertices, indices)
+}
 pub struct LoadObj;
 
 impl LoadObj {
-    pub fn load_obj(path: &str) -> Result<Mesh, Box<dyn std::error::Error>> {
-        let (models, materials) = tobj::load_obj(
-            path, 
-            &tobj::GPU_LOAD_OPTIONS,
-        )?;
-        let materials = materials?;
-        let model = &models[0];
-        // if let Some(material_id) = model.mesh.material_id {
-        //     let material = &materials[&material_id];
-
-        // }
-        let positions = &model.mesh.positions;
-        let normals = &model.mesh.normals;
-        let texcoords = &model.mesh.texcoords;
-
-        let vertices: Vec<Vertex> = positions
-            .chunks_exact(3)
-            .enumerate()
-            .map(|(i, pos)| {
-                let normal = if normals.len() >= (i + 1) * 3 {
-                    Vec3::new(
-                        normals[i * 3],
-                        normals[i * 3 + 1],
-                        normals[i * 3 + 2],
-                    )
-                } else {
-                    Vec3::ZERO
-                };
-
-                let tex_coords = if texcoords.len() >= (i + 1) * 2 {
-                    Vec2::new(
-                        texcoords[i * 2],
-                        texcoords[i * 2 + 1],
-                    )
-                } else {
-                    Vec2::ZERO
-                };
-
-                Vertex {
-                    position: Vec3::new(pos[0], pos[1], pos[2]),
-                    normal,
-                    tex_coords,
-                }
-            }).collect();
-        let mesh = Mesh::new(vertices, model.mesh.indices.clone());
-        
-        Ok(mesh)
+    pub fn load_obj(path: &str) -> Result<LoadObjResult, Box<dyn std::error::Error>> {
+        let mut result = LoadObjResult {models: Vec::new()};
+        let obj = parse_obj(path).unwrap();
+        let model = convert_to_mesh(obj);
+        let material = model.materials;
+        let meshes = model.meshes;
+        for mesh in meshes {
+            let new_mesh = convert_mesh(&mesh);
+            if let Some(material_id) = mesh.material_id {
+                let yaop_material = &material[material_id];
+                let mesh_mat_bundle = MeshMaterialBundle::new(new_mesh, Some(yaop_material.clone()));
+                result.models.push(mesh_mat_bundle);
+            }else{
+                let mesh_mat_bundle = MeshMaterialBundle::new(new_mesh, None);
+                result.models.push(mesh_mat_bundle);
+            }            
+        }
+        Ok(result)
     }
 }

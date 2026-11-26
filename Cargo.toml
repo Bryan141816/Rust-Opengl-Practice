@@ -12,3 +12,4 @@ image = "0.25"
 gltf = { version = "1.4", features = ["import"] }
 indexmap = "2"
 tobj = "4.0.5"
+yaop = { path = "./custom_lib/YAOP" }
